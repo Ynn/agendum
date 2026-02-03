@@ -188,7 +188,7 @@ export function ServiceDashboard({ events, selectedTeacher }: Props) {
                             </div>
                         </div>
 
-                        <div className="table-container">
+                        <div className="table-container service-table-container">
                             <table style={{ width: '100%' }}>
                                 <thead>
                                     <tr style={{ textAlign: 'left', background: '#fff' }}>

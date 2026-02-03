@@ -169,6 +169,33 @@ body,
   -webkit-overflow-scrolling: touch;
 }
 
+.service-dashboard .service-table-container {
+  max-height: min(60vh, 720px);
+  overflow-y: auto;
+  scrollbar-width: auto;
+  scrollbar-color: rgba(30, 64, 175, 0.95) rgba(241, 245, 249, 1);
+}
+
+.service-dashboard .service-table-container::-webkit-scrollbar {
+  width: 14px;
+}
+
+.service-dashboard .service-table-container::-webkit-scrollbar-track {
+  background: rgba(241, 245, 249, 1);
+  border-radius: 12px;
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.9);
+}
+
+.service-dashboard .service-table-container::-webkit-scrollbar-thumb {
+  background: rgba(30, 64, 175, 0.95);
+  border-radius: 12px;
+  border: 2px solid rgba(241, 245, 249, 1);
+}
+
+.service-dashboard .service-table-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(30, 58, 138, 1);
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
