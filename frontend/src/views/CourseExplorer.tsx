@@ -66,6 +66,14 @@ export function CourseExplorer({ events }: Props) {
         });
     };
 
+    const splitTeachers = (value?: string) => {
+        if (!value) return [];
+        return value
+            .split(',')
+            .map(t => t.trim())
+            .filter(Boolean);
+    };
+
     // 3. Stats & Teacher Analysis
     const stats = useMemo(() => {
         let cm = 0, td = 0, tp = 0, exam = 0, total = 0;
@@ -83,14 +91,17 @@ export function CourseExplorer({ events }: Props) {
             total += dur;
 
             // Teacher Extraction
-            const teacherName = (ev as any).extractedTeacher || t.unknown;
+            const teacherNames = splitTeachers((ev as any).extractedTeacher);
+            const targetTeachers = teacherNames.length > 0 ? teacherNames : [t.unknown];
 
-            if (!teacherMap.has(teacherName)) teacherMap.set(teacherName, { cm: 0, td: 0, tp: 0, total: 0 });
-            const tStat = teacherMap.get(teacherName)!;
-            tStat.total += dur;
-            if (type.includes("CM")) tStat.cm += dur;
-            else if (type.includes("TD")) tStat.td += dur;
-            else if (type.includes("TP")) tStat.tp += dur;
+            targetTeachers.forEach((teacherName) => {
+                if (!teacherMap.has(teacherName)) teacherMap.set(teacherName, { cm: 0, td: 0, tp: 0, total: 0 });
+                const tStat = teacherMap.get(teacherName)!;
+                tStat.total += dur;
+                if (type.includes("CM")) tStat.cm += dur;
+                else if (type.includes("TD")) tStat.td += dur;
+                else if (type.includes("TP")) tStat.tp += dur;
+            });
         });
 
         return { cm, td, tp, exam, total, teachers: Array.from(teacherMap.entries()) };
@@ -384,7 +395,7 @@ export function CourseExplorer({ events }: Props) {
                                                         {formatTime((ev as any).start_date)} - {formatTime((ev as any).end_date)}
                                                     </td>
                                                     <td style={{ padding: '0.75rem', fontSize: '0.9rem', color: 'var(--text-color)', fontWeight: 600 }}>
-                                                        {(ev as any).extractedTeacher || '—'}
+                                                        {splitTeachers((ev as any).extractedTeacher).join(', ') || '—'}
                                                     </td>
                                                     <td style={{ padding: '0.75rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                                                         {(ev as any).promo || '—'}
