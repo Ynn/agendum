@@ -53,6 +53,9 @@ VITE_RENNES_PROXY_BASE_URL="https://<your-worker-domain>" npm run build
 
 The app then routes these imports through `.../p/...`, stores the source URL, syncs automatically once per day, and limits manual refresh to once per hour.
 
+In local dev, no env var is needed by default: Vite proxies `/rennes-proxy/*` to `http://localhost:8787/*`.
+Run the worker locally (`cors-header-proxy`: `npm run dev`) and the frontend (`agenda/frontend`: `npm run dev`).
+
 You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
 
 ```js

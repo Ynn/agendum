@@ -11,10 +11,11 @@ interface Props {
     onRemove: (id: string) => void;
     onRefresh: (id: string) => Promise<void>;
     onRename: (id: string, name: string) => void;
+    onShowQr: (url: string) => void;
     onAdd: () => void;
 }
 
-export function CalendarManager({ calendars, isMobile = false, onToggle, onToggleStats, onRemove, onRefresh, onRename, onAdd }: Props) {
+export function CalendarManager({ calendars, isMobile = false, onToggle, onToggleStats, onRemove, onRefresh, onRename, onShowQr, onAdd }: Props) {
     const t = useT();
     const [editingId, setEditingId] = useState<string | null>(null);
     const [draftName, setDraftName] = useState('');
@@ -118,6 +119,17 @@ export function CalendarManager({ calendars, isMobile = false, onToggle, onToggl
                                 {msUntilManualRefreshAllowed(cal.remote.lastManualRefreshAt) > 0
                                     ? t.refresh_wait.replace('{minutes}', `${Math.ceil(msUntilManualRefreshAllowed(cal.remote.lastManualRefreshAt) / 60000)}`)
                                     : t.refresh}
+                            </button>
+                        )}
+
+                        {cal.remote?.sourceUrl && (
+                            <button
+                                onClick={() => onShowQr(cal.remote!.sourceUrl)}
+                                className="btn"
+                                style={{ padding: isMobile ? '0.16rem 0.34rem' : '0.2rem 0.5rem', fontSize: isMobile ? '0.66rem' : '0.75rem' }}
+                                title={t.show_qr}
+                            >
+                                QR
                             </button>
                         )}
 

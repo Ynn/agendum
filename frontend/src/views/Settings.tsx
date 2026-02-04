@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { CalendarManager } from '../components/CalendarManager';
 import { ImportZone } from '../components/ImportZone';
+import { QrCodeModal } from '../components/QrCodeModal';
 import type { Calendar, NormalizedEvent } from '../types';
 import { useT } from '../i18n';
 
@@ -9,7 +10,10 @@ interface Props {
     teacherOptions: { name: string; count: number }[];
     selectedTeacher: string;
     isMobile?: boolean;
+    themeMode: 'system' | 'light' | 'dark';
     onSelectTeacher: (name: string) => void;
+    onThemeModeChange: (mode: 'system' | 'light' | 'dark') => void;
+    onPurgeAll: () => Promise<void>;
     onOpenFix: () => void;
     onImport: (name: string, events: NormalizedEvent[], isService: boolean) => void;
     onImportFromUrl: (url: string, name: string, isService: boolean) => Promise<void>;
@@ -25,7 +29,10 @@ export function Settings({
     teacherOptions,
     selectedTeacher,
     isMobile = false,
+    themeMode,
     onSelectTeacher,
+    onThemeModeChange,
+    onPurgeAll,
     onOpenFix,
     onImport,
     onImportFromUrl,
@@ -36,6 +43,7 @@ export function Settings({
     onRenameCalendar
 }: Props) {
     const [showImport, setShowImport] = useState(false);
+    const [qrValue, setQrValue] = useState<string | null>(null);
     const t = useT();
 
     return (
@@ -94,8 +102,50 @@ export function Settings({
                     onRemove={onRemove}
                     onRefresh={onRefreshCalendar}
                     onRename={onRenameCalendar}
+                    onShowQr={setQrValue}
                     onAdd={() => setShowImport(true)} // Redundant but passed to component
                 />
+            </section>
+
+            <section className="card" style={{ padding: isMobile ? '0.8rem' : '1.5rem', marginTop: '0.7rem' }}>
+                <h3 style={{ marginTop: 0, fontSize: isMobile ? '0.92rem' : undefined }}>{t.data_and_privacy}</h3>
+                <div style={{ display: 'grid', gap: '0.6rem' }}>
+                    <div>
+                        <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.35rem', fontSize: isMobile ? '0.8rem' : undefined }}>{t.theme}</label>
+                        <select
+                            value={themeMode}
+                            onChange={(e) => onThemeModeChange(e.target.value as 'system' | 'light' | 'dark')}
+                            style={{
+                                padding: isMobile ? '0.4rem 0.5rem' : '0.6rem',
+                                borderRadius: 'var(--radius)',
+                                border: '1px solid var(--border-color)',
+                                width: '100%',
+                                fontSize: isMobile ? '0.8rem' : undefined
+                            }}
+                        >
+                            <option value="system">{t.theme_system}</option>
+                            <option value="light">{t.theme_light}</option>
+                            <option value="dark">{t.theme_dark}</option>
+                        </select>
+                    </div>
+                    <div>
+                        <p style={{ color: 'var(--text-muted)', fontSize: isMobile ? '0.76rem' : '0.9rem', marginBottom: '0.5rem' }}>
+                            {t.purge_all_desc}
+                        </p>
+                        <button
+                            className="btn"
+                            style={{
+                                borderColor: '#ef4444',
+                                color: '#ef4444',
+                                fontSize: isMobile ? '0.74rem' : undefined,
+                                padding: isMobile ? '0.2rem 0.45rem' : undefined
+                            }}
+                            onClick={() => { void onPurgeAll(); }}
+                        >
+                            {t.purge_all}
+                        </button>
+                    </div>
+                </div>
             </section>
 
             {showImport && (
@@ -114,6 +164,8 @@ export function Settings({
                     />
                 </div>
             )}
+
+            <QrCodeModal value={qrValue} onClose={() => setQrValue(null)} />
         </div>
     );
 }

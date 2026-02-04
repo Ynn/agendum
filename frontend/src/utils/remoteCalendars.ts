@@ -1,10 +1,11 @@
 const RENNES_HOST = 'planning.univ-rennes1.fr';
 const RENNES_PATH_PREFIX = '/jsp/custom/modules/plannings/';
 const RENNES_PROXY_ENDPOINT = '/p/';
+const DEV_PROXY_BASE_PATH = '/rennes-proxy';
 
 const envProxyBase = (import.meta.env.VITE_RENNES_PROXY_BASE_URL as string | undefined)?.trim();
 
-export const RENNES_PROXY_BASE_URL = envProxyBase || (import.meta.env.DEV ? 'http://127.0.0.1:8787' : '');
+export const RENNES_PROXY_BASE_URL = envProxyBase || (import.meta.env.DEV ? DEV_PROXY_BASE_PATH : '');
 export const AUTO_REFRESH_MS = 24 * 60 * 60 * 1000;
 export const MANUAL_REFRESH_COOLDOWN_MS = 60 * 60 * 1000;
 
@@ -31,7 +32,15 @@ export function buildFetchUrlFromSource(sourceUrl: string): string {
         throw new Error('Proxy non configuré (VITE_RENNES_PROXY_BASE_URL)');
     }
 
-    const base = new URL(RENNES_PROXY_BASE_URL);
+    let base: URL;
+    try {
+        base = new URL(RENNES_PROXY_BASE_URL);
+    } catch {
+        if (typeof window === 'undefined') {
+            throw new Error('Proxy non configuré (VITE_RENNES_PROXY_BASE_URL)');
+        }
+        base = new URL(RENNES_PROXY_BASE_URL, window.location.origin);
+    }
     const trimmedBasePath = base.pathname.replace(/\/+$/, '');
     const proxyBasePath = trimmedBasePath.endsWith('/p')
         ? trimmedBasePath

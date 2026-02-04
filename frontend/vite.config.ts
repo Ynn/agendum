@@ -5,6 +5,16 @@ import { VitePWA } from 'vite-plugin-pwa';
 // https://vitejs.dev/config/
 export default defineConfig({
   base: './', // Ensures assets are loaded relatively, compatible with GitHub Pages subdirectories
+  server: {
+    host: true,
+    proxy: {
+      '/rennes-proxy': {
+        target: 'http://localhost:8787',
+        changeOrigin: false,
+        rewrite: (path) => path.replace(/^\/rennes-proxy/, ''),
+      },
+    },
+  },
   plugins: [
     react(),
     VitePWA({

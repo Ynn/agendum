@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { parse_and_normalize } from '../pkg/agendum_core';
 import type { NormalizedEvent } from '../types';
 import { useT } from '../i18n';
+import { QrScannerModal } from './QrScannerModal';
 
 interface Props {
     isMobile?: boolean;
@@ -18,6 +19,7 @@ export function ImportZone({ isMobile = false, onImport, onImportFromUrl, onCanc
     const [sourceMode, setSourceMode] = useState<'file' | 'url'>('file');
     const [calendarUrl, setCalendarUrl] = useState('');
     const [calendarName, setCalendarName] = useState('');
+    const [showScanner, setShowScanner] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const t = useT();
 
@@ -47,6 +49,13 @@ export function ImportZone({ isMobile = false, onImport, onImportFromUrl, onCanc
             setError(t.error_parse);
             return;
         }
+        try {
+            new URL(calendarUrl.trim());
+        } catch {
+            setError(t.qr_invalid_url);
+            return;
+        }
+
         setLoading(true);
         setError(null);
         try {
@@ -231,13 +240,22 @@ export function ImportZone({ isMobile = false, onImport, onImportFromUrl, onCanc
                             marginBottom: '0.75rem'
                         }}
                     />
-                    <button
-                        className="btn btn-primary"
-                        onClick={() => { void importFromUrl(); }}
-                        disabled={loading || !calendarUrl.trim()}
-                    >
-                        {loading ? t.parsing : t.import_url}
-                    </button>
+                    <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }}>
+                        <button
+                            className="btn btn-primary"
+                            onClick={() => { void importFromUrl(); }}
+                            disabled={loading || !calendarUrl.trim()}
+                        >
+                            {loading ? t.parsing : t.import_url}
+                        </button>
+                        <button
+                            className="btn"
+                            onClick={() => setShowScanner(true)}
+                            disabled={loading}
+                        >
+                            {t.scan_qr}
+                        </button>
+                    </div>
                 </div>
             )}
 
@@ -247,6 +265,23 @@ export function ImportZone({ isMobile = false, onImport, onImportFromUrl, onCanc
             >
                 {t.cancel}
             </button>
+
+            <QrScannerModal
+                isOpen={showScanner}
+                onClose={() => setShowScanner(false)}
+                onDetected={(raw) => {
+                    try {
+                        const parsed = new URL(raw.trim());
+                        setCalendarUrl(parsed.toString());
+                        setSourceMode('url');
+                        setError(null);
+                        setShowScanner(false);
+                    } catch {
+                        setError(t.qr_invalid_url);
+                        setShowScanner(false);
+                    }
+                }}
+            />
         </div>
     );
 }

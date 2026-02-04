@@ -372,7 +372,15 @@ export default function App() {
 
   const fetchRemoteCalendarEvents = useCallback(async (sourceUrl: string) => {
     const targetUrl = buildFetchUrlFromSource(sourceUrl);
-    const response = await fetch(targetUrl, { method: 'GET', cache: 'no-store' });
+    let response: Response;
+    try {
+      response = await fetch(targetUrl, { method: 'GET', cache: 'no-store' });
+    } catch (err) {
+      if (err instanceof TypeError) {
+        throw new Error('Impossible de joindre le proxy (CORS/réseau). Vérifiez le worker local et son origine autorisée.');
+      }
+      throw err;
+    }
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
@@ -497,6 +505,37 @@ export default function App() {
     const updated = calendars.map((c) => c.id === id ? { ...c, name } : c);
     setCalendars(updated);
     saveState(updated);
+  };
+
+  const handlePurgeAll = async () => {
+    if (!window.confirm(t.purge_all_confirm)) return;
+    try {
+      const db = await getDB();
+      await db.delete(STORE_NAME, 'current_schedule');
+      await db.delete(STORE_NAME, 'main_calendar_id');
+      await db.delete(STORE_NAME, 'normalization_rules');
+    } catch {
+      // ignore
+    }
+    try {
+      localStorage.removeItem('agendum_state_calendars');
+      localStorage.removeItem('agendum_state_main_id');
+      localStorage.removeItem('agendum_state_norm_rules');
+      localStorage.removeItem('agendum_teacher');
+    } catch {
+      // ignore
+    }
+
+    setCalendars([]);
+    setMainCalendarId(null);
+    setSelectedTeacher('');
+    setSearchQuery('');
+    setFilters(initialFilters);
+    setNormalizationRules({
+      teachers: {}, promos: {}, subjects: {},
+      hidden: { teachers: {}, promos: {}, subjects: {} }
+    });
+    setView('settings');
   };
 
   // --- Derived Datasets ---
@@ -1014,7 +1053,10 @@ export default function App() {
               teacherOptions={teacherOptions}
               selectedTeacher={selectedTeacher}
               isMobile={isMobile}
+              themeMode={themeMode}
               onSelectTeacher={setSelectedTeacher}
+              onThemeModeChange={setThemeMode}
+              onPurgeAll={handlePurgeAll}
               onOpenFix={() => setView('fix')}
               onImport={handleImport}
               onImportFromUrl={handleImportFromUrl}
