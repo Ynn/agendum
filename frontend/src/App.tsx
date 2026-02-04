@@ -127,7 +127,6 @@ export default function App() {
     if (typeof window === 'undefined') return false;
     return window.matchMedia('(max-width: 1024px)').matches;
   });
-  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Colors for new calendars
@@ -159,7 +158,6 @@ export default function App() {
   useEffect(() => {
     if (!isMobile) {
       setMobileMenuOpen(false);
-      setMobileSearchOpen(false);
     }
   }, [isMobile]);
 
@@ -637,17 +635,7 @@ export default function App() {
 
     // 0. Deduplication (Visual/Stats logic is separate, but global filter applies first)
 
-    // 1. Search Query
-    if (searchQuery) {
-      const term = searchQuery.toLowerCase();
-      result = result.filter(ev =>
-        (ev.subject && ev.subject.toLowerCase().includes(term)) ||
-        (ev.type_ && ev.type_.toLowerCase().includes(term)) ||
-        (((ev as any).extractedTeacher || '').toLowerCase().includes(term))
-      );
-    }
-
-    // 2. Advanced Filters
+    // 1. Advanced Filters
     // Date Range
     if (filters.dateStart) {
       result = result.filter(ev => {
@@ -698,8 +686,8 @@ export default function App() {
   };
 
   // Filter Logic (Derived from allEvents)
-  const filteredEvents = useMemo(() => applyFilters(), [allEvents, searchQuery, filters, mainCalendarId]);
-  const courseEvents = useMemo(() => applyFilters('all'), [allEvents, searchQuery, filters, mainCalendarId]);
+  const filteredEvents = useMemo(() => applyFilters(), [allEvents, filters, mainCalendarId]);
+  const courseEvents = useMemo(() => applyFilters('all'), [allEvents, filters, mainCalendarId]);
 
   // Derived datasets for Views (Consume filteredEvents)
 
@@ -728,15 +716,18 @@ export default function App() {
   // 3. Search Results
   const searchResults = useMemo(() => {
     if (!searchQuery) return [];
-    // Search logic is now handled in filteredEvents
-    return filteredEvents;
+    const term = searchQuery.toLowerCase();
+    return filteredEvents.filter(ev =>
+      (ev.subject && ev.subject.toLowerCase().includes(term)) ||
+      (ev.type_ && ev.type_.toLowerCase().includes(term)) ||
+      (((ev as any).extractedTeacher || '').toLowerCase().includes(term))
+    );
   }, [filteredEvents, searchQuery]);
 
   // Handle Search Input
   const onSearch = (val: string) => {
     setSearchQuery(val);
     if (val && view !== 'search') setView('search');
-    if (!val && view === 'search') setView('agenda'); // Go back if cleared? Or stay
   };
 
   if (!isWasmReady) return <div style={{ display: 'flex', justifyContent: 'center', marginTop: '3rem' }}>{t.loading_core}</div>;
@@ -811,23 +802,10 @@ export default function App() {
 
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
               <button
-                className={`btn ${mobileSearchOpen ? 'btn-primary' : ''}`}
-                style={{ padding: '0.2rem 0.45rem', fontSize: '0.78rem' }}
-                onClick={() => {
-                  setMobileSearchOpen((v) => !v);
-                  setMobileMenuOpen(false);
-                  setView('search');
-                }}
-                title={lang === 'fr' ? 'Recherche' : 'Search'}
-              >
-                🔍
-              </button>
-              <button
                 className={`btn ${mobileMenuOpen ? 'btn-primary' : ''}`}
                 style={{ padding: '0.2rem 0.45rem', fontSize: '0.78rem' }}
                 onClick={() => {
                   setMobileMenuOpen((v) => !v);
-                  setMobileSearchOpen(false);
                 }}
                 title={lang === 'fr' ? 'Menu' : 'Menu'}
               >
@@ -835,7 +813,7 @@ export default function App() {
               </button>
             </div>
 
-            {mobileSearchOpen && (
+            {view === 'search' && (
               <div style={{ width: '100%', display: 'flex', gap: '0.35rem' }}>
                 <input
                   type="text"
@@ -851,7 +829,6 @@ export default function App() {
                     outline: 'none',
                     fontSize: '0.86rem'
                   }}
-                  onFocus={() => setView('search')}
                 />
                 <button
                   className={`btn ${filtersActive ? 'btn-primary' : ''}`}
@@ -1010,7 +987,6 @@ export default function App() {
             label={lang === 'fr' ? 'Recherche' : 'Search'}
             active={view === 'search'}
             onClick={() => {
-              setMobileSearchOpen(true);
               setMobileMenuOpen(false);
               setView('search');
             }}
