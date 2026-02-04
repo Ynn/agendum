@@ -134,19 +134,18 @@ export function ServiceDashboard({ events, selectedTeacher }: Props) {
     }, [baseEvents, cols, showEmpty, t]);
 
     return (
-        <div className="service-dashboard fade-in page-scroll">
+        <div className="service-dashboard fade-in page-scroll" style={{ height: '100%', minHeight: 0, overflowY: 'auto', paddingRight: '0.25rem' }}>
             {/* Controls */}
-            <div className="card" style={{ padding: '1rem', marginBottom: '1rem', display: 'flex', flexWrap: 'wrap', gap: '1.5rem', alignItems: 'center' }}>
+            <div className="card" style={{ padding: '0.55rem 0.75rem', marginBottom: '0.6rem', display: 'flex', flexWrap: 'wrap', gap: '0.8rem', alignItems: 'center' }}>
                 {selectedTeacher && (
-                    <div style={{ fontSize: '0.9rem', color: '#475569' }}>
+                    <div style={{ fontSize: '0.78rem', color: '#475569' }}>
                         {t.teacher}: <strong>{selectedTeacher}</strong>
                     </div>
                 )}
                 <div>
-                    <h3 style={{ margin: '0 0 0.5rem 0' }}>{t.include_totals}</h3>
-                    <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: '0.55rem', flexWrap: 'wrap' }}>
                         {colKeys.map(key => (
-                            <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', textTransform: 'uppercase', fontSize: '0.8rem' }}>
+                            <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.28rem', cursor: 'pointer', textTransform: 'uppercase', fontSize: '0.72rem' }}>
                                 <input type="checkbox" checked={cols[key]} onChange={e => setCols({ ...cols, [key]: e.target.checked })} />
                                 {key}
                             </label>
@@ -155,21 +154,59 @@ export function ServiceDashboard({ events, selectedTeacher }: Props) {
                 </div>
             </div>
 
-            <div className="card" style={{ padding: '1rem', marginBottom: '1rem', display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '0.75rem', flex: '1 1 480px' }}>
-                    <div><strong>CM</strong><div>{summary.cm.toFixed(1)} h</div></div>
-                    <div><strong>TD</strong><div>{summary.td.toFixed(1)} h</div></div>
-                    <div><strong>TP</strong><div>{summary.tp.toFixed(1)} h</div></div>
-                    <div>
-                        <strong>{t.total}</strong>
-                        <div>{summary.totalTeaching.toFixed(1)} h</div>
+            <div className="card" style={{ padding: '0.55rem 0.75rem', marginBottom: '0.6rem' }}>
+                <div style={{
+                    display: 'flex',
+                    gap: '1.1rem',
+                    flexWrap: 'wrap',
+                    padding: '0.55rem 0.7rem',
+                    background: 'white',
+                    borderRadius: 'var(--radius)',
+                    boxShadow: 'var(--shadow-xs)'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <span style={{ fontSize: '1rem' }}>⏱️</span>
+                        <div>
+                            <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.total_label}</div>
+                            <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-color)' }}>{summary.totalTeaching.toFixed(1)}h</div>
+                        </div>
                     </div>
-                </div>
-                <div style={{ flex: '0 0 260px', color: '#64748b', fontSize: '0.9rem' }}>
-                    <div style={{ fontWeight: 600, marginBottom: '0.35rem' }}>{lang === 'fr' ? 'Non compté' : 'Not counted'}</div>
-                    <div>{t.exam}: {summary.exam.toFixed(1)} h</div>
-                    <div>{t.reunion}: {summary.reunion.toFixed(1)} h</div>
-                    <div>{t.other}: {summary.other.toFixed(1)} h</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <span style={{ fontSize: '1rem' }}>📖</span>
+                        <div>
+                            <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>CM</div>
+                            <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1e40af' }}>{summary.cm.toFixed(1)}h</div>
+                        </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <span style={{ fontSize: '1rem' }}>✏️</span>
+                        <div>
+                            <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TD</div>
+                            <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#166534' }}>{summary.td.toFixed(1)}h</div>
+                        </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <span style={{ fontSize: '1rem' }}>🔬</span>
+                        <div>
+                            <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TP</div>
+                            <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#374151' }}>{summary.tp.toFixed(1)}h</div>
+                        </div>
+                    </div>
+                    <div style={{
+                        marginLeft: 'auto',
+                        minWidth: '260px',
+                        color: '#64748b',
+                        fontSize: '0.74rem',
+                        borderLeft: '1px solid var(--border-color)',
+                        paddingLeft: '0.8rem'
+                    }}>
+                        <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{lang === 'fr' ? 'Non compté' : 'Not counted'}</div>
+                        <div style={{ display: 'flex', gap: '0.7rem', flexWrap: 'wrap' }}>
+                            <div>🧪 {t.exam}: {summary.exam.toFixed(1)}h</div>
+                            <div>🗓️ {t.reunion}: {summary.reunion.toFixed(1)}h</div>
+                            <div>📌 {t.other}: {summary.other.toFixed(1)}h</div>
+                        </div>
+                    </div>
                 </div>
             </div>
 

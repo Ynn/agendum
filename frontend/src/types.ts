@@ -14,6 +14,13 @@ export interface Calendar {
     visible: boolean;
     includeInStats: boolean; /* New: Distinguish Service vs Info */
     events: NormalizedEvent[];
+    remote?: {
+        sourceUrl: string;
+        lastSyncedAt: number | null;
+        lastAttemptAt: number | null;
+        lastManualRefreshAt: number | null;
+        lastError: string | null;
+    };
 }
 
 export interface AppState {

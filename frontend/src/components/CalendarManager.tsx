@@ -1,16 +1,34 @@
+import { useState } from 'react';
 import type { Calendar } from '../types';
 import { useT } from '../i18n';
+import { msUntilManualRefreshAllowed } from '../utils/remoteCalendars';
 
 interface Props {
     calendars: Calendar[];
     onToggle: (id: string) => void;
     onToggleStats: (id: string) => void;
     onRemove: (id: string) => void;
+    onRefresh: (id: string) => Promise<void>;
+    onRename: (id: string, name: string) => void;
     onAdd: () => void;
 }
 
-export function CalendarManager({ calendars, onToggle, onToggleStats, onRemove, onAdd }: Props) {
+export function CalendarManager({ calendars, onToggle, onToggleStats, onRemove, onRefresh, onRename, onAdd }: Props) {
     const t = useT();
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [draftName, setDraftName] = useState('');
+
+    const startRename = (cal: Calendar) => {
+        setEditingId(cal.id);
+        setDraftName(cal.name);
+    };
+
+    const submitRename = (id: string) => {
+        const next = draftName.trim();
+        if (next) onRename(id, next);
+        setEditingId(null);
+    };
+
     return (
         <div className="card calendar-manager fade-in" style={{ padding: '0.75rem', flex: '1 1 300px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
@@ -20,7 +38,7 @@ export function CalendarManager({ calendars, onToggle, onToggleStats, onRemove, 
                 </button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '300px', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {calendars.length === 0 && <p style={{ color: '#ccc', fontStyle: 'italic' }}>{t.no_calendars_imported}</p>}
 
                 {calendars.map(cal => (
@@ -45,7 +63,34 @@ export function CalendarManager({ calendars, onToggle, onToggleStats, onRemove, 
                         </div>
 
                         <div style={{ flex: 1, overflow: 'hidden' }}>
-                            <div style={{ fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cal.name}</div>
+                            {editingId === cal.id ? (
+                                <input
+                                    type="text"
+                                    value={draftName}
+                                    onChange={(e) => setDraftName(e.target.value)}
+                                    onBlur={() => submitRename(cal.id)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') submitRename(cal.id);
+                                        if (e.key === 'Escape') setEditingId(null);
+                                    }}
+                                    autoFocus
+                                    style={{ width: '100%', fontWeight: 500, padding: '0.2rem 0.35rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                                />
+                            ) : (
+                                <div style={{ fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cal.name}</div>
+                            )}
+
+                            {cal.remote?.sourceUrl && (
+                                <div style={{ fontSize: '0.68rem', color: '#94a3b8', marginTop: '0.15rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    {cal.remote.sourceUrl}
+                                </div>
+                            )}
+                            {cal.remote?.sourceUrl && (
+                                <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '0.2rem' }}>
+                                    {t.last_sync_prefix} {cal.remote.lastSyncedAt ? new Date(cal.remote.lastSyncedAt).toLocaleString() : t.last_sync_never}
+                                    {cal.remote.lastError ? ` • ${t.sync_error}` : ''}
+                                </div>
+                            )}
                             {/* Stats Toggle */}
                             <label style={{ fontSize: '0.75rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer', marginTop: '0.2rem' }}>
                                 <input
@@ -56,6 +101,33 @@ export function CalendarManager({ calendars, onToggle, onToggleStats, onRemove, 
                                 {t.include_in_service}
                             </label>
                         </div>
+
+                        {cal.remote?.sourceUrl && (
+                            <button
+                                onClick={() => { void onRefresh(cal.id); }}
+                                className="btn"
+                                style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
+                                disabled={msUntilManualRefreshAllowed(cal.remote.lastManualRefreshAt) > 0}
+                                title={
+                                    msUntilManualRefreshAllowed(cal.remote.lastManualRefreshAt) > 0
+                                        ? t.refresh_wait.replace('{minutes}', `${Math.ceil(msUntilManualRefreshAllowed(cal.remote.lastManualRefreshAt) / 60000)}`)
+                                        : t.refresh
+                                }
+                            >
+                                {msUntilManualRefreshAllowed(cal.remote.lastManualRefreshAt) > 0
+                                    ? t.refresh_wait.replace('{minutes}', `${Math.ceil(msUntilManualRefreshAllowed(cal.remote.lastManualRefreshAt) / 60000)}`)
+                                    : t.refresh}
+                            </button>
+                        )}
+
+                        <button
+                            onClick={() => startRename(cal)}
+                            className="btn"
+                            style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
+                            title={t.rename}
+                        >
+                            {t.rename}
+                        </button>
 
                         <button
                             onClick={() => onRemove(cal.id)}

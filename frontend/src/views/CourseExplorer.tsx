@@ -272,36 +272,36 @@ export function CourseExplorer({ events }: Props) {
                     <>
                         {/* Header & Stats Header */}
                         <div style={{
-                            padding: '1.5rem',
+                            padding: '0.7rem 0.9rem',
                             borderBottom: '1px solid var(--border-color)',
                             background: subjectColors ? getSubjectColorLight(selectedSubject) : 'var(--bg-color)'
                         }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                                 <h2 style={{
                                     margin: 0,
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: '0.75rem',
-                                    fontSize: '1.5rem',
+                                    gap: '0.45rem',
+                                    fontSize: '1.05rem',
                                     fontWeight: 700
                                 }}>
                                     <span style={{
                                         display: 'inline-block',
-                                        width: '8px',
-                                        height: '32px',
+                                        width: '6px',
+                                        height: '20px',
                                         borderRadius: 'var(--radius-sm)',
                                         background: subjectColors?.bg || 'var(--primary-color)'
                                     }}></span>
                                     {selectedSubject}
                                 </h2>
                                 <div className="tabs" style={{ display: 'flex', gap: '0.5rem' }}>
-                                    <button className={`btn ${tab === 'list' ? 'btn-primary' : ''}`} onClick={() => setTab('list')}>
+                                    <button className={`btn ${tab === 'list' ? 'btn-primary' : ''}`} onClick={() => setTab('list')} style={{ fontSize: '0.75rem', padding: '0.2rem 0.45rem' }}>
                                         📋 {t.list}
                                     </button>
-                                    <button className={`btn ${tab === 'calendar' ? 'btn-primary' : ''}`} onClick={() => setTab('calendar')}>
+                                    <button className={`btn ${tab === 'calendar' ? 'btn-primary' : ''}`} onClick={() => setTab('calendar')} style={{ fontSize: '0.75rem', padding: '0.2rem 0.45rem' }}>
                                         📅 {t.calendar}
                                     </button>
-                                    <button className={`btn ${tab === 'teachers' ? 'btn-primary' : ''}`} onClick={() => setTab('teachers')}>
+                                    <button className={`btn ${tab === 'teachers' ? 'btn-primary' : ''}`} onClick={() => setTab('teachers')} style={{ fontSize: '0.75rem', padding: '0.2rem 0.45rem' }}>
                                         👥 {t.by_teacher}
                                     </button>
                                 </div>
@@ -309,39 +309,39 @@ export function CourseExplorer({ events }: Props) {
 
                             <div style={{
                                 display: 'flex',
-                                gap: '2rem',
+                                gap: '0.9rem',
                                 flexWrap: 'wrap',
-                                padding: '1rem',
+                                padding: '0.45rem 0.6rem',
                                 background: 'white',
                                 borderRadius: 'var(--radius)',
                                 boxShadow: 'var(--shadow-xs)'
                             }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <span style={{ fontSize: '1.5rem' }}>⏱️</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                    <span style={{ fontSize: '1rem' }}>⏱️</span>
                                     <div>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.total_label}</div>
-                                        <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-color)' }}>{stats.total.toFixed(1)}h</div>
+                                        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.total_label}</div>
+                                        <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-color)' }}>{stats.total.toFixed(1)}h</div>
                                     </div>
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <span style={{ fontSize: '1.5rem' }}>📖</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                    <span style={{ fontSize: '1rem' }}>📖</span>
                                     <div>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>CM</div>
-                                        <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1e40af' }}>{stats.cm.toFixed(1)}h</div>
+                                        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>CM</div>
+                                        <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1e40af' }}>{stats.cm.toFixed(1)}h</div>
                                     </div>
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <span style={{ fontSize: '1.5rem' }}>✏️</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                    <span style={{ fontSize: '1rem' }}>✏️</span>
                                     <div>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TD</div>
-                                        <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#166534' }}>{stats.td.toFixed(1)}h</div>
+                                        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TD</div>
+                                        <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#166534' }}>{stats.td.toFixed(1)}h</div>
                                     </div>
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <span style={{ fontSize: '1.5rem' }}>🔬</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                    <span style={{ fontSize: '1rem' }}>🔬</span>
                                     <div>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TP</div>
-                                        <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#374151' }}>{stats.tp.toFixed(1)}h</div>
+                                        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TP</div>
+                                        <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#374151' }}>{stats.tp.toFixed(1)}h</div>
                                     </div>
                                 </div>
                             </div>

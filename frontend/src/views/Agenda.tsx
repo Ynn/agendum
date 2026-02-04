@@ -23,20 +23,7 @@ export function Agenda({ events }: { events: (NormalizedEvent & { color?: string
         enabled: false
     });
 
-    const viewButtons = useMemo(() => ([
-        { id: 'timeGridDay', label: lang === 'fr' ? 'Jour' : 'Day' },
-        { id: 'timeGridWeek', label: lang === 'fr' ? 'Semaine' : 'Week' },
-        { id: 'dayGridMonth', label: lang === 'fr' ? 'Mois' : 'Month' },
-        { id: 'listRange', label: lang === 'fr' ? 'Liste' : 'List' },
-    ]), [lang]);
-
     const getApi = () => calendarRef.current?.getApi();
-
-    const setView = (view: string) => {
-        const api = getApi();
-        api?.changeView(view);
-        setCurrentView(view);
-    };
 
     const pad2 = (n: number) => n.toString().padStart(2, '0');
     const toDateInput = (date: Date) => `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
@@ -83,6 +70,16 @@ export function Agenda({ events }: { events: (NormalizedEvent & { color?: string
     };
 
     const isListView = currentView.startsWith('list');
+    const weekInputSupported = useMemo(() => {
+        if (typeof document === 'undefined') return true;
+        const input = document.createElement('input');
+        input.setAttribute('type', 'week');
+        return input.type === 'week';
+    }, []);
+    const weekDateValue = useMemo(() => {
+        const d = weekToDate(weekValue);
+        return d ? toDateInput(d) : '';
+    }, [weekValue]);
 
     useEffect(() => {
         if (!isListView) return;
@@ -165,21 +162,13 @@ export function Agenda({ events }: { events: (NormalizedEvent & { color?: string
             background: 'white',
             padding: '0.75rem',
             borderRadius: 'var(--radius)',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: 0,
+            flex: 1,
+            overflow: 'auto'
         }}>
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
-                {viewButtons.map(btn => (
-                    <button
-                        key={btn.id}
-                        className={`btn ${currentView === btn.id ? 'btn-primary' : ''}`}
-                        onClick={() => setView(btn.id)}
-                        style={{ padding: '0.35rem 0.8rem' }}
-                    >
-                        {btn.label}
-                    </button>
-                ))}
-            </div>
-
             <FullCalendar
                 ref={calendarRef}
                 plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
@@ -191,7 +180,15 @@ export function Agenda({ events }: { events: (NormalizedEvent & { color?: string
                 headerToolbar={{
                     left: 'prev,next today',
                     center: 'title',
-                    right: ''
+                    right: 'timeGridDay,timeGridWeek,dayGridMonth,listRange'
+                }}
+                buttonText={{
+                    today: lang === 'fr' ? 'Aujourd’hui' : 'Today',
+                    day: lang === 'fr' ? 'Jour' : 'Day',
+                    week: lang === 'fr' ? 'Semaine' : 'Week',
+                    month: lang === 'fr' ? 'Mois' : 'Month',
+                    list: lang === 'fr' ? 'Liste' : 'List',
+                    listRange: lang === 'fr' ? 'Liste' : 'List',
                 }}
                 events={fcEvents}
                 eventClick={(info) => {
@@ -278,12 +275,20 @@ export function Agenda({ events }: { events: (NormalizedEvent & { color?: string
                     <div className="agenda-week-picker">
                         <span>{lang === 'fr' ? 'Semaine' : 'Week'}</span>
                         <input
-                            type="week"
-                            value={weekValue}
+                            type={weekInputSupported ? 'week' : 'date'}
+                            value={weekInputSupported ? weekValue : weekDateValue}
                             onChange={(e) => {
-                                const d = weekToDate(e.target.value);
-                                if (d) getApi()?.gotoDate(d);
-                                setWeekValue(e.target.value);
+                                if (weekInputSupported) {
+                                    const d = weekToDate(e.target.value);
+                                    if (d) getApi()?.gotoDate(d);
+                                    setWeekValue(e.target.value);
+                                    return;
+                                }
+                                const d = parseYMD(e.target.value);
+                                if (d) {
+                                    getApi()?.gotoDate(d);
+                                    setWeekValue(toWeekInputValue(d));
+                                }
                             }}
                         />
                     </div>

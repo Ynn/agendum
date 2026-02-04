@@ -95,9 +95,11 @@ body,
   /* Changed from auto to hidden */
   display: flex;
   flex-direction: column;
-  /* Calculate height: 100vh - header height - bottom nav height */
+  /* Calculate height: 100vh - header height - bottom nav height 
   height: calc(100vh - 80px - 80px);
   max-height: calc(100vh - 80px - 80px);
+  */
+  height: 90vh;
 }
 
 /* Utilities */
@@ -170,8 +172,8 @@ body,
 }
 
 .service-dashboard .service-table-container {
-  max-height: min(60vh, 720px);
-  overflow-y: auto;
+  max-height: none;
+  overflow-y: visible;
   scrollbar-width: auto;
   scrollbar-color: rgba(30, 64, 175, 0.95) rgba(241, 245, 249, 1);
 }
@@ -242,12 +244,13 @@ th {
 
   /* FullCalendar overrides for mobile */
   .fc-header-toolbar {
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: wrap;
     gap: 0.5rem;
   }
 
   .fc-toolbar-title {
-    font-size: 1.2rem !important;
+    font-size: 0.95rem !important;
   }
 }
 
@@ -635,6 +638,12 @@ th {
   flex-wrap: wrap;
 }
 
+.agenda-nav-buttons .btn {
+  font-size: 0.78rem;
+  padding: 0.22rem 0.5rem;
+  line-height: 1.1;
+}
+
 .agenda-week-picker {
   display: flex;
   gap: 0.4rem;
@@ -766,6 +775,33 @@ button:focus {
 }
 
 /* FullCalendar event text truncation */
+.agenda-container .fc .fc-header-toolbar {
+  margin-bottom: 0.6rem;
+  gap: 0.4rem;
+}
+
+.agenda-container .fc .fc-toolbar-title {
+  font-size: 1rem !important;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.agenda-container .fc .fc-toolbar-chunk {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.agenda-container .fc .fc-button {
+  font-size: 0.78rem !important;
+  padding: 0.22rem 0.5rem !important;
+  line-height: 1.1;
+}
+
+.agenda-container .fc .fc-button .fc-icon {
+  font-size: 0.9rem;
+}
+
 .fc-event-title {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -835,4 +871,19 @@ button:focus {
 .fc-timegrid-event-short .fc-event-teacher,
 .fc-timegrid-event-short .fc-event-location {
   display: none;
+}
+
+@media (max-width: 900px) {
+  .agenda-container .fc .fc-header-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .agenda-container .fc .fc-toolbar-title {
+    font-size: 0.92rem !important;
+  }
+
+  .agenda-container .fc .fc-button {
+    font-size: 0.72rem !important;
+    padding: 0.2rem 0.42rem !important;
+  }
 }

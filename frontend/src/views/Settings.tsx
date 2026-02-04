@@ -6,16 +6,17 @@ import { useT } from '../i18n';
 
 interface Props {
     calendars: Calendar[];
-    mainCalendarId: string | null;
-    setMainCalendarId: (id: string) => void;
     teacherOptions: { name: string; count: number }[];
     selectedTeacher: string;
     onSelectTeacher: (name: string) => void;
     onOpenFix: () => void;
     onImport: (name: string, events: NormalizedEvent[], isService: boolean) => void;
+    onImportFromUrl: (url: string, name: string, isService: boolean) => Promise<void>;
     onRemove: (id: string) => void;
     onToggle: (id: string) => void;
     onToggleStats: (id: string) => void;
+    onRefreshCalendar: (id: string) => Promise<void>;
+    onRenameCalendar: (id: string, name: string) => void;
 }
 
 export function Settings({
@@ -25,15 +26,18 @@ export function Settings({
     onSelectTeacher,
     onOpenFix,
     onImport,
+    onImportFromUrl,
     onRemove,
     onToggle,
-    onToggleStats
+    onToggleStats,
+    onRefreshCalendar,
+    onRenameCalendar
 }: Props) {
     const [showImport, setShowImport] = useState(false);
     const t = useT();
 
     return (
-        <div className="settings-view fade-in page-scroll" style={{ padding: '1rem', maxWidth: '100%', margin: '0 auto', height: '100%' }}>
+        <div className="settings-view fade-in page-scroll" style={{ padding: '1rem', maxWidth: '100%', margin: '0 auto', height: '100%', overflowY: 'auto' }}>
             <h2 style={{ marginBottom: '2rem' }}>{t.settings_title}</h2>
 
             <section className="card" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
@@ -79,6 +83,8 @@ export function Settings({
                     onToggle={onToggle}
                     onToggleStats={onToggleStats}
                     onRemove={onRemove}
+                    onRefresh={onRefreshCalendar}
+                    onRename={onRenameCalendar}
                     onAdd={() => setShowImport(true)} // Redundant but passed to component
                 />
             </section>
@@ -88,7 +94,14 @@ export function Settings({
                     position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
                     background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
                 }}>
-                    <ImportZone onImport={(n, e, s) => { onImport(n, e, s); setShowImport(false); }} onCancel={() => setShowImport(false)} />
+                    <ImportZone
+                        onImport={(n, e, s) => { onImport(n, e, s); setShowImport(false); }}
+                        onImportFromUrl={async (url, name, isService) => {
+                            await onImportFromUrl(url, name, isService);
+                            setShowImport(false);
+                        }}
+                        onCancel={() => setShowImport(false)}
+                    />
                 </div>
             )}
         </div>

@@ -43,6 +43,16 @@ export default defineConfig([
 ])
 ```
 
+## Remote Rennes URLs
+
+For URLs like `https://planning.univ-rennes1.fr/jsp/custom/modules/plannings/<token>.shu`, set:
+
+```bash
+VITE_RENNES_PROXY_BASE_URL="https://<your-worker-domain>" npm run build
+```
+
+The app then routes these imports through `.../p/...`, stores the source URL, syncs automatically once per day, and limits manual refresh to once per hour.
+
 You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
 
 ```js

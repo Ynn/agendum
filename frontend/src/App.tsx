@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
-import init from './pkg/agendum_core';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import init, { parse_and_normalize } from './pkg/agendum_core';
 import { openDB } from 'idb';
 import { ServiceDashboard } from './views/ServiceDashboard';
 import { Agenda } from './views/Agenda';
@@ -11,6 +11,12 @@ import type { Calendar, NormalizedEvent } from './types';
 import { AdvancedFilters, initialFilters } from './components/AdvancedFilters';
 import type { FilterState } from './components/AdvancedFilters';
 import { LangContext, detectLang, strings, type Lang } from './i18n';
+import {
+  AUTO_REFRESH_MS,
+  buildFetchUrlFromSource,
+  calendarNameFromUrl,
+  msUntilManualRefreshAllowed,
+} from './utils/remoteCalendars';
 import './index.css';
 
 // DB Config
@@ -68,6 +74,20 @@ type NormalizationRules = {
   };
 };
 
+const withCalendarDefaults = (cal: Calendar): Calendar => ({
+  ...cal,
+  includeInStats: cal.includeInStats ?? true,
+  remote: cal.remote
+    ? {
+      sourceUrl: cal.remote.sourceUrl,
+      lastSyncedAt: cal.remote.lastSyncedAt ?? null,
+      lastAttemptAt: cal.remote.lastAttemptAt ?? cal.remote.lastSyncedAt ?? null,
+      lastManualRefreshAt: cal.remote.lastManualRefreshAt ?? null,
+      lastError: cal.remote.lastError ?? null,
+    }
+    : undefined,
+});
+
 export default function App() {
   const [isWasmReady, setIsWasmReady] = useState(false);
   const [calendars, setCalendars] = useState<Calendar[]>([]);
@@ -98,6 +118,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<FilterState>(initialFilters);
+  const [refreshingIds, setRefreshingIds] = useState<Record<string, boolean>>({});
 
   // Colors for new calendars
   const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#6366f1'];
@@ -174,7 +195,7 @@ export default function App() {
           setMainCalendarId(legacyId);
         } else {
           const loaded = saved as Calendar[];
-          setCalendars(loaded.map(c => ({ ...c, includeInStats: c.includeInStats ?? true })));
+          setCalendars(loaded.map(withCalendarDefaults));
         }
         return;
       }
@@ -196,7 +217,7 @@ export default function App() {
         }
         if (raw) {
           const parsed = JSON.parse(raw) as Calendar[];
-          setCalendars(parsed.map(c => ({ ...c, includeInStats: c.includeInStats ?? true })));
+          setCalendars(parsed.map(withCalendarDefaults));
         }
       } catch (e2) {
         console.error('Fallback state load failed', e2);
@@ -238,7 +259,13 @@ export default function App() {
     saveRules(normalizationRules);
   }, [normalizationRules]);
 
-  const handleImport = (name: string, events: NormalizedEvent[], isService: boolean) => {
+  const handleImport = (
+    name: string,
+    events: NormalizedEvent[],
+    isService: boolean,
+    sourceUrl?: string,
+    lastSyncedAt?: number,
+  ) => {
     const newId = Date.now().toString();
     const newCal: Calendar = {
       id: newId,
@@ -246,7 +273,16 @@ export default function App() {
       color: colors[calendars.length % colors.length],
       visible: true,
       includeInStats: isService,
-      events: events
+      events: events,
+      remote: sourceUrl
+        ? {
+          sourceUrl,
+          lastSyncedAt: lastSyncedAt ?? Date.now(),
+          lastAttemptAt: lastSyncedAt ?? Date.now(),
+          lastManualRefreshAt: null,
+          lastError: null,
+        }
+        : undefined,
     };
     const updated = [...calendars, newCal];
     setCalendars(updated);
@@ -257,6 +293,110 @@ export default function App() {
 
     saveState(updated, newMain || undefined);
   };
+
+  const fetchRemoteCalendarEvents = useCallback(async (sourceUrl: string) => {
+    const targetUrl = buildFetchUrlFromSource(sourceUrl);
+    const response = await fetch(targetUrl, { method: 'GET', cache: 'no-store' });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const text = await response.text();
+    return parse_and_normalize(text);
+  }, []);
+
+  const handleImportFromUrl = useCallback(async (url: string, name: string, isService: boolean) => {
+    const events = await fetchRemoteCalendarEvents(url);
+    const calendarName = name.trim() || calendarNameFromUrl(url);
+    handleImport(calendarName, events, isService, url, Date.now());
+  }, [fetchRemoteCalendarEvents, handleImport]);
+
+  const refreshRemoteCalendar = useCallback(async (id: string, isManual: boolean) => {
+    const calendar = calendars.find((c) => c.id === id);
+    if (!calendar?.remote?.sourceUrl) return;
+    if (refreshingIds[id]) return;
+
+    if (isManual) {
+      const waitMs = msUntilManualRefreshAllowed(calendar.remote.lastManualRefreshAt);
+      if (waitMs > 0) return;
+    }
+
+    setRefreshingIds((prev) => ({ ...prev, [id]: true }));
+    const attemptAt = Date.now();
+    const markAttempt = calendars.map((c) => c.id === id && c.remote
+      ? {
+        ...c,
+        remote: {
+          ...c.remote,
+          lastAttemptAt: attemptAt,
+          lastManualRefreshAt: isManual ? attemptAt : c.remote.lastManualRefreshAt,
+        }
+      }
+      : c
+    );
+    setCalendars(markAttempt);
+    saveState(markAttempt);
+
+    try {
+      const events = await fetchRemoteCalendarEvents(calendar.remote.sourceUrl);
+      const syncedAt = Date.now();
+      const updated = markAttempt.map((c) => c.id === id && c.remote
+        ? {
+          ...c,
+          events,
+          remote: {
+            ...c.remote,
+            lastSyncedAt: syncedAt,
+            lastAttemptAt: syncedAt,
+            lastError: null,
+          }
+        }
+        : c
+      );
+      setCalendars(updated);
+      saveState(updated);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Refresh failed';
+      const updated = markAttempt.map((c) => c.id === id && c.remote
+        ? {
+          ...c,
+          remote: {
+            ...c.remote,
+            lastError: message,
+          }
+        }
+        : c
+      );
+      setCalendars(updated);
+      saveState(updated);
+    } finally {
+      setRefreshingIds((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    }
+  }, [calendars, fetchRemoteCalendarEvents, refreshingIds]);
+
+  useEffect(() => {
+    if (!isWasmReady) return;
+
+    const refreshDueCalendars = () => {
+      calendars
+        .filter((c) => c.remote?.sourceUrl)
+        .filter((c) => {
+          const lastAttemptAt = c.remote?.lastAttemptAt ?? c.remote?.lastSyncedAt ?? null;
+          if (!lastAttemptAt) return true;
+          return Date.now() - lastAttemptAt >= AUTO_REFRESH_MS;
+        })
+        .forEach((c) => {
+          void refreshRemoteCalendar(c.id, false);
+        });
+    };
+
+    refreshDueCalendars();
+    const timer = window.setInterval(refreshDueCalendars, 60 * 60 * 1000);
+    return () => window.clearInterval(timer);
+  }, [calendars, isWasmReady, refreshRemoteCalendar]);
 
   const handleRemoveCalendar = (id: string) => {
     const updated = calendars.filter(c => c.id !== id);
@@ -271,14 +411,14 @@ export default function App() {
     saveState(updated);
   };
 
-  const handleSetMainCalendar = (id: string) => {
-    setMainCalendarId(id);
-    // Auto-save main ID
-    saveState(calendars, id);
-  };
-
   const handleToggleStats = (id: string) => {
     const updated = calendars.map(c => c.id === id ? { ...c, includeInStats: !c.includeInStats } : c);
+    setCalendars(updated);
+    saveState(updated);
+  };
+
+  const handleRenameCalendar = (id: string, name: string) => {
+    const updated = calendars.map((c) => c.id === id ? { ...c, name } : c);
     setCalendars(updated);
     saveState(updated);
   };
@@ -632,7 +772,7 @@ export default function App() {
       <main className="main-content" style={{ padding: '0.5rem 2.5vw 80px', maxWidth: '100%', margin: '0 auto', width: '100%' }}>
         <div className="view-shell">
           {view === 'agenda' && (
-            <div>
+            <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, height: '100%' }}>
               {!mainCalendarId && (
                 <div style={{ padding: '1rem', background: '#fffbeb', color: '#b45309', borderRadius: 'var(--radius)', marginBottom: '1rem', border: '1px solid #fcd34d' }}>
                   ⚠️ {t.no_main_schedule} {t.go_settings_prefix} <button onClick={() => setView('settings')} style={{ textDecoration: 'underline', fontWeight: 'bold', background: 'none', border: 'none', cursor: 'pointer', color: 'inherit' }}>{t.settings}</button> {t.go_settings_suffix}
@@ -691,16 +831,19 @@ export default function App() {
           {view === 'settings' && (
             <Settings
               calendars={calendars}
-              mainCalendarId={mainCalendarId}
-              setMainCalendarId={handleSetMainCalendar}
               teacherOptions={teacherOptions}
               selectedTeacher={selectedTeacher}
               onSelectTeacher={setSelectedTeacher}
               onOpenFix={() => setView('fix')}
               onImport={handleImport}
+              onImportFromUrl={handleImportFromUrl}
               onRemove={handleRemoveCalendar}
               onToggle={handleToggleCalendar}
               onToggleStats={handleToggleStats}
+              onRenameCalendar={handleRenameCalendar}
+              onRefreshCalendar={async (id) => {
+                await refreshRemoteCalendar(id, true);
+              }}
             />
           )}
 

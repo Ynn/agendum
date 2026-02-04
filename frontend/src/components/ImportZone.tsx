@@ -5,26 +5,31 @@ import { useT } from '../i18n';
 
 interface Props {
     onImport: (name: string, events: NormalizedEvent[], isService: boolean) => void;
+    onImportFromUrl: (url: string, name: string, isService: boolean) => Promise<void>;
     onCancel: () => void;
 }
 
-export function ImportZone({ onImport, onCancel }: Props) {
+export function ImportZone({ onImport, onImportFromUrl, onCancel }: Props) {
     const [active, setActive] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [type, setType] = useState<'teacher' | 'resource'>('teacher');
+    const [sourceMode, setSourceMode] = useState<'file' | 'url'>('file');
+    const [calendarUrl, setCalendarUrl] = useState('');
+    const [calendarName, setCalendarName] = useState('');
     const fileInputRef = useRef<HTMLInputElement>(null);
     const t = useT();
 
     const processFile = (file: File) => {
         setLoading(true);
+        setError(null);
         const reader = new FileReader();
         reader.onload = async (e) => {
             try {
                 const text = e.target?.result as string;
                 // Parse + normalize using WASM for consistent typing and durations
                 const events = parse_and_normalize(text);
-                const name = file.name.replace('.ics', '');
+                const name = calendarName.trim() || file.name.replace('.ics', '');
                 onImport(name, events, type === 'teacher'); // Pass stats flag
             } catch (err) {
                 console.error(err);
@@ -34,6 +39,24 @@ export function ImportZone({ onImport, onCancel }: Props) {
             }
         };
         reader.readAsText(file);
+    };
+
+    const importFromUrl = async () => {
+        if (!calendarUrl.trim()) {
+            setError(t.error_parse);
+            return;
+        }
+        setLoading(true);
+        setError(null);
+        try {
+            const name = calendarName.trim();
+            await onImportFromUrl(calendarUrl.trim(), name, type === 'teacher');
+        } catch (err) {
+            console.error(err);
+            setError(err instanceof Error ? err.message : t.error_parse);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleDragOver = (e: React.DragEvent) => {
@@ -82,6 +105,25 @@ export function ImportZone({ onImport, onCancel }: Props) {
 
             <h3 style={{ marginTop: 0 }}>{t.import_calendar}</h3>
 
+            <div style={{ marginBottom: '1rem', textAlign: 'left' }}>
+                <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 600, fontSize: '0.9rem' }}>
+                    {t.calendar_name_label}
+                </label>
+                <input
+                    type="text"
+                    value={calendarName}
+                    onChange={(e) => setCalendarName(e.target.value)}
+                    placeholder={t.calendar_name_placeholder}
+                    disabled={loading}
+                    style={{
+                        width: '100%',
+                        padding: '0.6rem',
+                        borderRadius: '8px',
+                        border: '1px solid #cbd5e1'
+                    }}
+                />
+            </div>
+
             {/* Type Selection */}
             <div style={{ marginBottom: '1.5rem', textAlign: 'left', background: '#f8fafc', padding: '1rem', borderRadius: 'var(--radius)', border: '1px solid #e2e8f0' }}>
                 <div style={{ marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.9rem' }}>{t.calendar_type}:</div>
@@ -115,31 +157,87 @@ export function ImportZone({ onImport, onCancel }: Props) {
                 </div>
             </div>
 
-            <div
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                style={{
-                    border: active ? '2px solid #3b82f6' : '2px dashed #94a3b8',
-                    background: active ? '#eff6ff' : '#f8fafc',
-                    borderRadius: 'var(--radius)',
-                    padding: '3rem 1rem',
-                    transition: 'all 0.2s',
-                    cursor: 'pointer'
-                }}
-                onClick={() => fileInputRef.current?.click()}
-            >
-                <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={(e) => e.target.files && processFile(e.target.files[0])}
-                    hidden
-                    accept=".ics"
-                />
-                <p style={{ margin: 0, color: '#64748b' }}>
-                    {loading ? t.parsing : t.drag_drop}
-                </p>
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+                <button
+                    className={`btn ${sourceMode === 'file' ? 'btn-primary' : ''}`}
+                    style={{ flex: 1 }}
+                    onClick={() => setSourceMode('file')}
+                    disabled={loading}
+                >
+                    {t.source_file}
+                </button>
+                <button
+                    className={`btn ${sourceMode === 'url' ? 'btn-primary' : ''}`}
+                    style={{ flex: 1 }}
+                    onClick={() => setSourceMode('url')}
+                    disabled={loading}
+                >
+                    {t.source_url}
+                </button>
             </div>
+
+            {sourceMode === 'file' && (
+                <div
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    style={{
+                        border: active ? '2px solid #3b82f6' : '2px dashed #94a3b8',
+                        background: active ? '#eff6ff' : '#f8fafc',
+                        borderRadius: 'var(--radius)',
+                        padding: '3rem 1rem',
+                        transition: 'all 0.2s',
+                        cursor: 'pointer'
+                    }}
+                    onClick={() => fileInputRef.current?.click()}
+                >
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={(e) => e.target.files && processFile(e.target.files[0])}
+                        hidden
+                        accept=".ics"
+                    />
+                    <p style={{ margin: 0, color: '#64748b' }}>
+                        {loading ? t.parsing : t.drag_drop}
+                    </p>
+                </div>
+            )}
+
+            {sourceMode === 'url' && (
+                <div style={{
+                    border: '1px solid #e2e8f0',
+                    background: '#f8fafc',
+                    borderRadius: 'var(--radius)',
+                    padding: '1rem',
+                    textAlign: 'left'
+                }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.9rem' }}>
+                        {t.calendar_url_label}
+                    </label>
+                    <input
+                        type="url"
+                        value={calendarUrl}
+                        onChange={(e) => setCalendarUrl(e.target.value)}
+                        placeholder={t.calendar_url_placeholder}
+                        disabled={loading}
+                        style={{
+                            width: '100%',
+                            padding: '0.6rem',
+                            borderRadius: '8px',
+                            border: '1px solid #cbd5e1',
+                            marginBottom: '0.75rem'
+                        }}
+                    />
+                    <button
+                        className="btn btn-primary"
+                        onClick={() => { void importFromUrl(); }}
+                        disabled={loading || !calendarUrl.trim()}
+                    >
+                        {loading ? t.parsing : t.import_url}
+                    </button>
+                </div>
+            )}
 
             <button
                 onClick={onCancel}
