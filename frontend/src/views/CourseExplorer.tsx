@@ -181,7 +181,7 @@ export function CourseExplorer({ events, isMobile = false, isTablet = false }: P
                                             fontSize: '0.82rem',
                                             padding: '0.45rem 0.6rem',
                                             borderLeft: `4px solid ${colors.bg}`,
-                                            background: '#fff'
+                                            background: 'var(--card-bg)'
                                         }}
                                     >
                                         {s}
@@ -241,7 +241,7 @@ export function CourseExplorer({ events, isMobile = false, isTablet = false }: P
                                 gap: '0.8rem',
                                 flexWrap: 'wrap',
                                 padding: '0.45rem 0.55rem',
-                                background: 'white',
+                                background: 'var(--card-bg)',
                                 borderRadius: 'var(--radius)',
                                 boxShadow: 'var(--shadow-xs)'
                             }}>
@@ -515,7 +515,7 @@ export function CourseExplorer({ events, isMobile = false, isTablet = false }: P
                                 gap: '0.9rem',
                                 flexWrap: 'wrap',
                                 padding: '0.45rem 0.6rem',
-                                background: 'white',
+                                background: 'var(--card-bg)',
                                 borderRadius: 'var(--radius)',
                                 boxShadow: 'var(--shadow-xs)'
                             }}>
@@ -554,9 +554,9 @@ export function CourseExplorer({ events, isMobile = false, isTablet = false }: P
                         <div style={{ flex: 1, overflowY: tab === 'calendar' ? 'hidden' : 'auto', padding: '0.5rem', minHeight: 0 }}>
 
                             {tab === 'list' && (
-                                <div style={{ overflowX: 'auto' }}>
-                                    <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
-                                        <thead style={{ position: 'sticky', top: 0, background: 'white', zIndex: 10 }}>
+                            <div style={{ overflowX: 'auto' }}>
+                                <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
+                                    <thead style={{ position: 'sticky', top: 0, background: 'var(--card-bg)', zIndex: 10 }}>
                                             <tr style={{ textAlign: 'left' }}>
                                                 <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.type}</th>
                                                 <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.date}</th>

@@ -168,7 +168,7 @@ export function Agenda({
 
     return (
         <div className={`agenda-container ${isMobile ? 'agenda-mobile' : ''}`} style={{
-            background: 'white',
+            background: 'var(--card-bg)',
             padding: isMobile ? '0.2rem' : '0.75rem',
             borderRadius: isMobile ? '10px' : 'var(--radius)',
             boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',

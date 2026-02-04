@@ -161,7 +161,7 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false }: 
                     gap: isMobile ? '0.7rem' : '1.1rem',
                     flexWrap: 'wrap',
                     padding: isMobile ? '0.4rem 0.5rem' : '0.55rem 0.7rem',
-                    background: 'white',
+                    background: 'var(--card-bg)',
                     borderRadius: 'var(--radius)',
                     boxShadow: 'var(--shadow-xs)'
                 }}>
@@ -196,7 +196,7 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false }: 
                     <div style={{
                         marginLeft: 'auto',
                         minWidth: isMobile ? '100%' : '260px',
-                        color: '#64748b',
+                        color: 'var(--text-muted)',
                         fontSize: isMobile ? '0.68rem' : '0.74rem',
                         borderLeft: isMobile ? '0' : '1px solid var(--border-color)',
                         paddingLeft: isMobile ? '0' : '0.8rem'
@@ -213,13 +213,13 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false }: 
 
             {/* Teacher Sections */}
             {teacherStats.length === 0 ? (
-                <div className="card" style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>
+                <div className="card" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-light)' }}>
                     {t.no_events_service}
                 </div>
             ) : (
                 teacherStats.map(teacher => (
                     <section key={teacher.name} className="card" style={{ padding: '0', marginBottom: '2rem', overflow: 'hidden' }}>
-                        <div style={{ background: '#f8fafc', padding: isMobile ? '0.55rem 0.7rem' : '1rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ background: 'var(--bg-secondary)', padding: isMobile ? '0.55rem 0.7rem' : '1rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <h2 style={{ margin: 0, fontSize: isMobile ? '0.9rem' : '1.25rem' }}>{teacher.name}</h2>
                             <div style={{ fontSize: isMobile ? '0.88rem' : '1.2rem', fontWeight: 700, color: 'var(--primary-color)' }}>
                                 {teacher.grandTotal.toFixed(1)} h
@@ -229,12 +229,12 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false }: 
                         <div className="table-container service-table-container">
                             <table style={{ width: '100%' }}>
                                 <thead>
-                                    <tr style={{ textAlign: 'left', background: '#fff', fontSize: isMobile ? '0.66rem' : undefined }}>
+                                    <tr style={{ textAlign: 'left', background: 'var(--card-bg)', fontSize: isMobile ? '0.66rem' : undefined }}>
                                         <th style={{ padding: isMobile ? '0.45rem 0.6rem' : '1rem 1.5rem' }}>{t.subject}</th>
                                         {cols.cm && <th style={{ textAlign: 'right' }}>CM</th>}
                                         {cols.td && <th style={{ textAlign: 'right' }}>TD</th>}
                                         {cols.tp && <th style={{ textAlign: 'right' }}>TP</th>}
-                                        <th style={{ textAlign: 'right', padding: isMobile ? '0.45rem 0.6rem' : '1rem 1.5rem', background: '#f1f5f9' }}>{t.total}</th>
+                                        <th style={{ textAlign: 'right', padding: isMobile ? '0.45rem 0.6rem' : '1rem 1.5rem', background: 'var(--bg-secondary)' }}>{t.total}</th>
                                         {cols.exam && <th style={{ textAlign: 'right' }}>{t.exam}</th>}
                                         {cols.reunion && <th style={{ textAlign: 'right' }}>{t.reunion}</th>}
                                         {cols.other && <th style={{ textAlign: 'right' }}>{t.other}</th>}
@@ -242,12 +242,12 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false }: 
                                 </thead>
                                 <tbody>
                                     {teacher.subjectList.map(row => (
-                                        <tr key={row.name} style={{ borderTop: '1px solid #f1f5f9', fontSize: isMobile ? '0.68rem' : undefined }}>
+                                        <tr key={row.name} style={{ borderTop: '1px solid var(--bg-secondary)', fontSize: isMobile ? '0.68rem' : undefined }}>
                                             <td style={{ padding: isMobile ? '0.42rem 0.6rem' : '0.8rem 1.5rem', fontWeight: 500 }}>{row.name}</td>
                                             {cols.cm && <td style={{ textAlign: 'right' }}>{row.cm > 0 ? row.cm.toFixed(1) : '-'}</td>}
                                             {cols.td && <td style={{ textAlign: 'right' }}>{row.td > 0 ? row.td.toFixed(1) : '-'}</td>}
                                             {cols.tp && <td style={{ textAlign: 'right' }}>{row.tp > 0 ? row.tp.toFixed(1) : '-'}</td>}
-                                            <td style={{ textAlign: 'right', padding: isMobile ? '0.42rem 0.6rem' : '0.8rem 1.5rem', fontWeight: 700, background: '#f8fafc' }}>
+                                            <td style={{ textAlign: 'right', padding: isMobile ? '0.42rem 0.6rem' : '0.8rem 1.5rem', fontWeight: 700, background: 'var(--bg-secondary)' }}>
                                                 {row.filteredTotal.toFixed(1)}
                                             </td>
                                             {cols.exam && <td style={{ textAlign: 'right' }}>{row.exam > 0 ? row.exam.toFixed(1) : '-'}</td>}
@@ -262,7 +262,7 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false }: 
                 ))
             )}
 
-            <p style={{ textAlign: 'right', color: '#64748b', fontSize: '0.85rem', padding: '0 1rem' }}>
+            <p style={{ textAlign: 'right', color: 'var(--text-muted)', fontSize: '0.85rem', padding: '0 1rem' }}>
                 {t.smart_dedupe_note}
             </p>
         </div>

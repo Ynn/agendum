@@ -30,10 +30,10 @@ export function SearchResults({ events, query, isMobile = false }: Props) {
             <h2 style={{ marginBottom: '1rem' }}>
                 {t.search_results_for} <span style={{ color: 'var(--primary-color)' }}>"{query}"</span>
             </h2>
-            <p style={{ color: '#64748b', marginBottom: '2rem' }}>{t.found_events.replace('{count}', String(events.length))}</p>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>{t.found_events.replace('{count}', String(events.length))}</p>
 
             {events.length === 0 ? (
-                <div className="card" style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>
+                <div className="card" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-light)' }}>
                     {t.no_results}
                 </div>
             ) : isMobile ? (
@@ -50,7 +50,7 @@ export function SearchResults({ events, query, isMobile = false }: Props) {
                                 <div><strong>{t.time}:</strong> {formatTime((ev as any).start_date)} - {formatTime((ev as any).end_date)}</div>
                                 <div><strong>{t.teacher}:</strong> {(ev as any).extractedTeacher || t.unknown_teacher}</div>
                                 <div><strong>{t.location}:</strong> {ev.raw.location || '-'}</div>
-                                <div style={{ color: '#64748b' }}><strong>{t.calendar_source}:</strong> {(ev as any).calendarName}</div>
+                                <div style={{ color: 'var(--text-muted)' }}><strong>{t.calendar_source}:</strong> {(ev as any).calendarName}</div>
                             </div>
                         </div>
                     ))}

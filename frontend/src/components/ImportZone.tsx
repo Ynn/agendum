@@ -77,7 +77,7 @@ export function ImportZone({ isMobile = false, onImport, onImportFromUrl, onCanc
 
     return (
         <div className="card" style={{
-            background: 'white',
+            background: 'var(--card-bg)',
             padding: isMobile ? '0.9rem' : '2rem',
             borderRadius: 'var(--radius)',
             maxWidth: isMobile ? '94vw' : '500px',
@@ -127,7 +127,7 @@ export function ImportZone({ isMobile = false, onImport, onImportFromUrl, onCanc
             </div>
 
             {/* Type Selection */}
-            <div style={{ marginBottom: '1.5rem', textAlign: 'left', background: '#f8fafc', padding: '1rem', borderRadius: 'var(--radius)', border: '1px solid #e2e8f0' }}>
+            <div style={{ marginBottom: '1.5rem', textAlign: 'left', background: 'var(--bg-secondary)', padding: '1rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)' }}>
                 <div style={{ marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.9rem' }}>{t.calendar_type}:</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
                     <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
@@ -140,7 +140,7 @@ export function ImportZone({ isMobile = false, onImport, onImportFromUrl, onCanc
                         />
                         <div>
                             <strong style={{ display: 'block', marginBottom: '0.2rem' }}>{t.teacher_schedule}</strong>
-                            <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{t.teacher_schedule_desc}</div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t.teacher_schedule_desc}</div>
                         </div>
                     </label>
                     <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
@@ -153,7 +153,7 @@ export function ImportZone({ isMobile = false, onImport, onImportFromUrl, onCanc
                         />
                         <div>
                             <strong style={{ display: 'block', marginBottom: '0.2rem' }}>{t.resource_promo}</strong>
-                            <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{t.resource_promo_desc}</div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t.resource_promo_desc}</div>
                         </div>
                     </label>
                 </div>
@@ -185,7 +185,7 @@ export function ImportZone({ isMobile = false, onImport, onImportFromUrl, onCanc
                     onDrop={handleDrop}
                     style={{
                         border: active ? '2px solid #3b82f6' : '2px dashed #94a3b8',
-                        background: active ? '#eff6ff' : '#f8fafc',
+                        background: active ? 'var(--primary-light)' : 'var(--bg-secondary)',
                         borderRadius: 'var(--radius)',
                         padding: '3rem 1rem',
                         transition: 'all 0.2s',
@@ -200,7 +200,7 @@ export function ImportZone({ isMobile = false, onImport, onImportFromUrl, onCanc
                         hidden
                         accept=".ics"
                     />
-                    <p style={{ margin: 0, color: '#64748b' }}>
+                    <p style={{ margin: 0, color: 'var(--text-muted)' }}>
                         {loading ? t.parsing : t.drag_drop}
                     </p>
                 </div>
@@ -209,7 +209,7 @@ export function ImportZone({ isMobile = false, onImport, onImportFromUrl, onCanc
             {sourceMode === 'url' && (
                 <div style={{
                     border: '1px solid #e2e8f0',
-                    background: '#f8fafc',
+                    background: 'var(--bg-secondary)',
                     borderRadius: 'var(--radius)',
                     padding: '1rem',
                     textAlign: 'left'

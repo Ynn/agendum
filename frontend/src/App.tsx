@@ -62,6 +62,8 @@ const getDB = () => openDB(DB_NAME, DB_VERSION, {
 });
 
 type View = 'agenda' | 'courses' | 'stats' | 'settings' | 'search' | 'fix';
+type ThemeMode = 'system' | 'light' | 'dark';
+type ResolvedTheme = 'light' | 'dark';
 
 type NormalizationRules = {
   teachers: Record<string, string>;
@@ -119,6 +121,16 @@ export default function App() {
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<FilterState>(initialFilters);
   const [refreshingIds, setRefreshingIds] = useState<Record<string, boolean>>({});
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
+    try {
+      const saved = localStorage.getItem('agendum_theme_mode');
+      if (saved === 'system' || saved === 'light' || saved === 'dark') return saved;
+    } catch {
+      // ignore
+    }
+    return 'system';
+  });
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>('light');
   const [isMobile, setIsMobile] = useState(() => {
     if (typeof window === 'undefined') return false;
     return window.matchMedia('(max-width: 768px)').matches;
@@ -180,6 +192,39 @@ export default function App() {
       // ignore
     }
   }, [lang]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('agendum_theme_mode', themeMode);
+    } catch {
+      // ignore
+    }
+  }, [themeMode]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const updateTheme = () => {
+      if (themeMode === 'system') {
+        setResolvedTheme(mq.matches ? 'dark' : 'light');
+      } else {
+        setResolvedTheme(themeMode);
+      }
+    };
+    updateTheme();
+    const onChange = () => updateTheme();
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, [themeMode]);
+
+  useEffect(() => {
+    try {
+      document.documentElement.dataset.theme = resolvedTheme;
+      document.documentElement.style.colorScheme = resolvedTheme;
+    } catch {
+      // ignore
+    }
+  }, [resolvedTheme]);
 
   useEffect(() => {
     try {
@@ -739,7 +784,7 @@ export default function App() {
       {/* 1. Global Header with Search & Filter */}
       <header style={{
         position: 'sticky', top: 0, zIndex: 100,
-        background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(10px)',
+        background: 'var(--card-bg)', backdropFilter: 'blur(10px)',
         borderBottom: '1px solid var(--border-color)',
         padding: isMobile ? '0.45rem 0.55rem' : '0.8rem 1rem',
         display: 'flex', flexDirection: 'row', alignItems: 'center', gap: isMobile ? '0.5rem' : '1rem', flexWrap: 'wrap',
@@ -762,11 +807,12 @@ export default function App() {
                 onChange={(e) => onSearch(e.target.value)}
                 style={{
                   flex: 1, padding: '0.6rem 1rem', borderRadius: '20px',
-                  border: '1px solid #cbd5e1', background: '#f1f5f9', outline: 'none',
+                  border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', outline: 'none',
+                  color: 'var(--text-color)',
                   transition: 'all 0.2s'
                 }}
-                onFocus={(e) => e.currentTarget.style.background = 'white'}
-                onBlur={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                onFocus={(e) => e.currentTarget.style.background = 'var(--card-bg)'}
+                onBlur={(e) => e.currentTarget.style.background = 'var(--bg-secondary)'}
               />
               <button
                 onClick={() => setShowFilters(true)}
@@ -778,11 +824,21 @@ export default function App() {
             </div>
 
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={{ fontSize: '0.85rem', color: '#64748b' }}>{t.language}</span>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t.theme}</span>
+              <select
+                value={themeMode}
+                onChange={(e) => setThemeMode(e.target.value as ThemeMode)}
+                style={{ padding: '0.35rem 0.5rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--card-bg)', color: 'var(--text-color)' }}
+              >
+                <option value="system">{t.theme_system}</option>
+                <option value="light">{t.theme_light}</option>
+                <option value="dark">{t.theme_dark}</option>
+              </select>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t.language}</span>
               <select
                 value={lang}
                 onChange={(e) => setLang(e.target.value as Lang)}
-                style={{ padding: '0.35rem 0.5rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}
+                style={{ padding: '0.35rem 0.5rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--card-bg)', color: 'var(--text-color)' }}
               >
                 <option value="fr">{t.language_fr}</option>
                 <option value="en">{t.language_en}</option>
@@ -824,10 +880,11 @@ export default function App() {
                     flex: 1,
                     padding: '0.45rem 0.65rem',
                     borderRadius: '12px',
-                    border: '1px solid #cbd5e1',
-                    background: '#f1f5f9',
+                    border: '1px solid var(--border-color)',
+                    background: 'var(--bg-secondary)',
                     outline: 'none',
-                    fontSize: '0.86rem'
+                    fontSize: '0.86rem',
+                    color: 'var(--text-color)'
                   }}
                 />
                 <button
@@ -846,7 +903,7 @@ export default function App() {
                 border: '1px solid var(--border-color)',
                 borderRadius: '10px',
                 padding: '0.5rem',
-                background: '#fff',
+                background: 'var(--card-bg)',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.5rem',
@@ -859,11 +916,21 @@ export default function App() {
                   {t.settings}
                 </button>
                 <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                  <span style={{ fontSize: '0.72rem', color: '#64748b' }}>{t.language}</span>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{t.theme}</span>
+                  <select
+                    value={themeMode}
+                    onChange={(e) => setThemeMode(e.target.value as ThemeMode)}
+                    style={{ padding: '0.2rem 0.35rem', borderRadius: '7px', border: '1px solid var(--border-color)', fontSize: '0.78rem', background: 'var(--card-bg)', color: 'var(--text-color)' }}
+                  >
+                    <option value="system">{t.theme_system}</option>
+                    <option value="light">{t.theme_light}</option>
+                    <option value="dark">{t.theme_dark}</option>
+                  </select>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{t.language}</span>
                   <select
                     value={lang}
                     onChange={(e) => setLang(e.target.value as Lang)}
-                    style={{ padding: '0.2rem 0.35rem', borderRadius: '7px', border: '1px solid var(--border-color)', fontSize: '0.78rem' }}
+                    style={{ padding: '0.2rem 0.35rem', borderRadius: '7px', border: '1px solid var(--border-color)', fontSize: '0.78rem', background: 'var(--card-bg)', color: 'var(--text-color)' }}
                   >
                     <option value="fr">{t.language_fr}</option>
                     <option value="en">{t.language_en}</option>
@@ -975,7 +1042,7 @@ export default function App() {
       {/* 3. Bottom Navigation Bar */}
       <div style={{
         position: 'fixed', bottom: 0, left: 0, width: '100%',
-        background: 'white', borderTop: '1px solid var(--border-color)',
+        background: 'var(--card-bg)', borderTop: '1px solid var(--border-color)',
         display: 'flex', justifyContent: 'space-around', padding: isMobile ? '0.45rem 0' : '0.8rem 0',
         boxShadow: '0 -2px 10px rgba(0,0,0,0.05)', zIndex: 100
       }}>
@@ -1008,7 +1075,7 @@ function NavBtn({ label, active, onClick, icon, compact = false }: any) {
       style={{
         background: 'none', border: 'none', display: 'flex', flexDirection: 'column',
         alignItems: 'center', gap: '4px', cursor: 'pointer',
-        color: active ? 'var(--primary-color)' : '#94a3b8',
+        color: active ? 'var(--primary-color)' : 'var(--text-light)',
         fontWeight: active ? 600 : 400
       }}
     >

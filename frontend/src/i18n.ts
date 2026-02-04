@@ -21,6 +21,10 @@ export const strings = {
     language: 'Language',
     language_en: 'English',
     language_fr: 'French',
+    theme: 'Theme',
+    theme_system: 'System',
+    theme_light: 'Light',
+    theme_dark: 'Dark',
 
     settings_title: 'Settings & Data',
     my_schedule: 'My Schedule',
@@ -156,6 +160,10 @@ export const strings = {
     language: 'Langue',
     language_en: 'Anglais',
     language_fr: 'Français',
+    theme: 'Thème',
+    theme_system: 'Système',
+    theme_light: 'Clair',
+    theme_dark: 'Sombre',
 
     settings_title: 'Paramètres & Données',
     my_schedule: 'Mon Agenda',

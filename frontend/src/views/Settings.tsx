@@ -44,7 +44,7 @@ export function Settings({
 
             <section className="card" style={{ padding: isMobile ? '0.8rem' : '1.5rem', marginBottom: isMobile ? '0.7rem' : '2rem' }}>
                 <h3 style={{ marginTop: 0, fontSize: isMobile ? '0.92rem' : undefined }}>{t.teacher_identity}</h3>
-                <p style={{ color: '#64748b', fontSize: isMobile ? '0.76rem' : '0.9rem', marginBottom: isMobile ? '0.6rem' : '1rem' }}>
+                <p style={{ color: 'var(--text-muted)', fontSize: isMobile ? '0.76rem' : '0.9rem', marginBottom: isMobile ? '0.6rem' : '1rem' }}>
                     {t.teacher_identity_desc}
                 </p>
                 <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.35rem', fontSize: isMobile ? '0.8rem' : undefined }}>{t.teacher_select_label}</label>
@@ -82,7 +82,7 @@ export function Settings({
                     </div>
                 </div>
 
-                <p style={{ color: '#64748b', fontSize: isMobile ? '0.76rem' : '0.9rem', marginBottom: isMobile ? '0.8rem' : '1.5rem' }}>
+                <p style={{ color: 'var(--text-muted)', fontSize: isMobile ? '0.76rem' : '0.9rem', marginBottom: isMobile ? '0.8rem' : '1.5rem' }}>
                     {t.data_sources_desc}
                 </p>
 

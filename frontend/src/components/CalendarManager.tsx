@@ -46,7 +46,7 @@ export function CalendarManager({ calendars, isMobile = false, onToggle, onToggl
                     <div key={cal.id} style={{
                         display: 'flex', alignItems: 'center', gap: '0.8rem',
                         padding: isMobile ? '0.35rem' : '0.5rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)',
-                        background: 'white'
+                        background: 'var(--card-bg)'
                     }}>
                         {/* Visibility Toggle */}
                         <div
@@ -82,18 +82,18 @@ export function CalendarManager({ calendars, isMobile = false, onToggle, onToggl
                             )}
 
                             {cal.remote?.sourceUrl && (
-                                <div style={{ fontSize: isMobile ? '0.62rem' : '0.68rem', color: '#94a3b8', marginTop: '0.15rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                <div style={{ fontSize: isMobile ? '0.62rem' : '0.68rem', color: 'var(--text-light)', marginTop: '0.15rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                     {cal.remote.sourceUrl}
                                 </div>
                             )}
                             {cal.remote?.sourceUrl && (
-                                <div style={{ fontSize: isMobile ? '0.64rem' : '0.72rem', color: '#64748b', marginTop: '0.2rem' }}>
+                                <div style={{ fontSize: isMobile ? '0.64rem' : '0.72rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
                                     {t.last_sync_prefix} {cal.remote.lastSyncedAt ? new Date(cal.remote.lastSyncedAt).toLocaleString() : t.last_sync_never}
                                     {cal.remote.lastError ? ` • ${t.sync_error}` : ''}
                                 </div>
                             )}
                             {/* Stats Toggle */}
-                            <label style={{ fontSize: isMobile ? '0.67rem' : '0.75rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer', marginTop: '0.2rem' }}>
+                            <label style={{ fontSize: isMobile ? '0.67rem' : '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer', marginTop: '0.2rem' }}>
                                 <input
                                     type="checkbox"
                                     checked={cal.includeInStats}
