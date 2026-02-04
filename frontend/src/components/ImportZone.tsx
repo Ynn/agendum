@@ -4,12 +4,13 @@ import type { NormalizedEvent } from '../types';
 import { useT } from '../i18n';
 
 interface Props {
+    isMobile?: boolean;
     onImport: (name: string, events: NormalizedEvent[], isService: boolean) => void;
     onImportFromUrl: (url: string, name: string, isService: boolean) => Promise<void>;
     onCancel: () => void;
 }
 
-export function ImportZone({ onImport, onImportFromUrl, onCancel }: Props) {
+export function ImportZone({ isMobile = false, onImport, onImportFromUrl, onCancel }: Props) {
     const [active, setActive] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -77,9 +78,9 @@ export function ImportZone({ onImport, onImportFromUrl, onCancel }: Props) {
     return (
         <div className="card" style={{
             background: 'white',
-            padding: '2rem',
+            padding: isMobile ? '0.9rem' : '2rem',
             borderRadius: 'var(--radius)',
-            maxWidth: '500px',
+            maxWidth: isMobile ? '94vw' : '500px',
             margin: '0 auto',
             textAlign: 'center'
         }}>
@@ -103,10 +104,10 @@ export function ImportZone({ onImport, onImportFromUrl, onCancel }: Props) {
                 </div>
             )}
 
-            <h3 style={{ marginTop: 0 }}>{t.import_calendar}</h3>
+            <h3 style={{ marginTop: 0, fontSize: isMobile ? '0.95rem' : undefined }}>{t.import_calendar}</h3>
 
             <div style={{ marginBottom: '1rem', textAlign: 'left' }}>
-                <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 600, fontSize: '0.9rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 600, fontSize: isMobile ? '0.78rem' : '0.9rem' }}>
                     {t.calendar_name_label}
                 </label>
                 <input
@@ -117,9 +118,10 @@ export function ImportZone({ onImport, onImportFromUrl, onCancel }: Props) {
                     disabled={loading}
                     style={{
                         width: '100%',
-                        padding: '0.6rem',
+                        padding: isMobile ? '0.45rem' : '0.6rem',
                         borderRadius: '8px',
-                        border: '1px solid #cbd5e1'
+                        border: '1px solid #cbd5e1',
+                        fontSize: isMobile ? '0.78rem' : undefined
                     }}
                 />
             </div>

@@ -119,6 +119,16 @@ export default function App() {
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<FilterState>(initialFilters);
   const [refreshingIds, setRefreshingIds] = useState<Record<string, boolean>>({});
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(max-width: 768px)').matches;
+  });
+  const [isTablet, setIsTablet] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(max-width: 1024px)').matches;
+  });
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Colors for new calendars
   const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#6366f1'];
@@ -129,6 +139,29 @@ export default function App() {
     if (filters.days.length !== 7) return true;
     return false;
   }, [filters]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mqMobile = window.matchMedia('(max-width: 768px)');
+    const mqTablet = window.matchMedia('(max-width: 1024px)');
+    const onMobileChange = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    const onTabletChange = (e: MediaQueryListEvent) => setIsTablet(e.matches);
+    setIsMobile(mqMobile.matches);
+    setIsTablet(mqTablet.matches);
+    mqMobile.addEventListener('change', onMobileChange);
+    mqTablet.addEventListener('change', onTabletChange);
+    return () => {
+      mqMobile.removeEventListener('change', onMobileChange);
+      mqTablet.removeEventListener('change', onTabletChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isMobile) {
+      setMobileMenuOpen(false);
+      setMobileSearchOpen(false);
+    }
+  }, [isMobile]);
 
   useEffect(() => {
     (async () => {
@@ -717,59 +750,161 @@ export default function App() {
         position: 'sticky', top: 0, zIndex: 100,
         background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(10px)',
         borderBottom: '1px solid var(--border-color)',
-        padding: '0.8rem 1rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap',
+        padding: isMobile ? '0.45rem 0.55rem' : '0.8rem 1rem',
+        display: 'flex', flexDirection: 'row', alignItems: 'center', gap: isMobile ? '0.5rem' : '1rem', flexWrap: 'wrap',
         boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
       }}>
-        <div
-          style={{ fontWeight: 800, fontSize: '1.2rem', background: 'linear-gradient(45deg, #2563eb, #9333ea)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', cursor: 'pointer' }}
-          onClick={() => setView('agenda')}
-        >
-          {t.app_name.toUpperCase()}
-        </div>
+        {!isMobile && (
+          <>
+            <div
+              style={{ fontWeight: 800, fontSize: '1.2rem', background: 'linear-gradient(45deg, #2563eb, #9333ea)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', cursor: 'pointer' }}
+              onClick={() => setView('agenda')}
+            >
+              {t.app_name.toUpperCase()}
+            </div>
 
-        <div style={{ flex: 1, minWidth: '280px', maxWidth: '700px', margin: '0 1rem', display: 'flex', gap: '0.5rem' }}>
-          <input
-            type="text"
-            placeholder={`🔍 ${t.search_placeholder}`}
-            value={searchQuery}
-            onChange={(e) => onSearch(e.target.value)}
-            style={{
-              flex: 1, padding: '0.6rem 1rem', borderRadius: '20px',
-              border: '1px solid #cbd5e1', background: '#f1f5f9', outline: 'none',
-              transition: 'all 0.2s'
-            }}
-            onFocus={(e) => e.currentTarget.style.background = 'white'}
-            onBlur={(e) => e.currentTarget.style.background = '#f1f5f9'}
-          />
-          <button
-            onClick={() => setShowFilters(true)}
-            className={`btn ${filtersActive ? 'btn-primary' : ''}`}
-            style={{ borderRadius: '20px', padding: '0 1rem' }}
-          >
-            {t.filters} ⇩
-          </button>
-        </div>
+            <div style={{ flex: 1, minWidth: '280px', maxWidth: '700px', margin: '0 1rem', display: 'flex', gap: '0.5rem' }}>
+              <input
+                type="text"
+                placeholder={`🔍 ${t.search_placeholder}`}
+                value={searchQuery}
+                onChange={(e) => onSearch(e.target.value)}
+                style={{
+                  flex: 1, padding: '0.6rem 1rem', borderRadius: '20px',
+                  border: '1px solid #cbd5e1', background: '#f1f5f9', outline: 'none',
+                  transition: 'all 0.2s'
+                }}
+                onFocus={(e) => e.currentTarget.style.background = 'white'}
+                onBlur={(e) => e.currentTarget.style.background = '#f1f5f9'}
+              />
+              <button
+                onClick={() => setShowFilters(true)}
+                className={`btn ${filtersActive ? 'btn-primary' : ''}`}
+                style={{ borderRadius: '20px', padding: '0 1rem' }}
+              >
+                {t.filters} ⇩
+              </button>
+            </div>
 
-        {/* Desktop Nav (Hidden on mobile) */}
-        <nav className="desktop-nav" style={{ display: 'flex', gap: '1rem' }}>
-          {/* Could be here, but using Bottom Nav for strict splitting as requested */}
-        </nav>
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontSize: '0.85rem', color: '#64748b' }}>{t.language}</span>
+              <select
+                value={lang}
+                onChange={(e) => setLang(e.target.value as Lang)}
+                style={{ padding: '0.35rem 0.5rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}
+              >
+                <option value="fr">{t.language_fr}</option>
+                <option value="en">{t.language_en}</option>
+              </select>
+            </div>
+          </>
+        )}
 
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ fontSize: '0.85rem', color: '#64748b' }}>{t.language}</span>
-          <select
-            value={lang}
-            onChange={(e) => setLang(e.target.value as Lang)}
-            style={{ padding: '0.35rem 0.5rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}
-          >
-            <option value="fr">{t.language_fr}</option>
-            <option value="en">{t.language_en}</option>
-          </select>
-        </div>
+        {isMobile && (
+          <>
+            <div
+              style={{ fontWeight: 800, fontSize: '0.95rem', background: 'linear-gradient(45deg, #2563eb, #9333ea)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', cursor: 'pointer' }}
+              onClick={() => setView('agenda')}
+            >
+              {t.app_name}
+            </div>
+
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <button
+                className={`btn ${mobileSearchOpen ? 'btn-primary' : ''}`}
+                style={{ padding: '0.2rem 0.45rem', fontSize: '0.78rem' }}
+                onClick={() => {
+                  setMobileSearchOpen((v) => !v);
+                  setMobileMenuOpen(false);
+                  setView('search');
+                }}
+                title={lang === 'fr' ? 'Recherche' : 'Search'}
+              >
+                🔍
+              </button>
+              <button
+                className={`btn ${mobileMenuOpen ? 'btn-primary' : ''}`}
+                style={{ padding: '0.2rem 0.45rem', fontSize: '0.78rem' }}
+                onClick={() => {
+                  setMobileMenuOpen((v) => !v);
+                  setMobileSearchOpen(false);
+                }}
+                title={lang === 'fr' ? 'Menu' : 'Menu'}
+              >
+                ☰
+              </button>
+            </div>
+
+            {mobileSearchOpen && (
+              <div style={{ width: '100%', display: 'flex', gap: '0.35rem' }}>
+                <input
+                  type="text"
+                  placeholder={`🔍 ${t.search_placeholder}`}
+                  value={searchQuery}
+                  onChange={(e) => onSearch(e.target.value)}
+                  style={{
+                    flex: 1,
+                    padding: '0.45rem 0.65rem',
+                    borderRadius: '12px',
+                    border: '1px solid #cbd5e1',
+                    background: '#f1f5f9',
+                    outline: 'none',
+                    fontSize: '0.86rem'
+                  }}
+                  onFocus={() => setView('search')}
+                />
+                <button
+                  className={`btn ${filtersActive ? 'btn-primary' : ''}`}
+                  style={{ padding: '0.25rem 0.55rem', fontSize: '0.78rem' }}
+                  onClick={() => setShowFilters(true)}
+                >
+                  {t.filters}
+                </button>
+              </div>
+            )}
+
+            {mobileMenuOpen && (
+              <div style={{
+                width: '100%',
+                border: '1px solid var(--border-color)',
+                borderRadius: '10px',
+                padding: '0.5rem',
+                background: '#fff',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                flexWrap: 'wrap'
+              }}>
+                <button className="btn" style={{ padding: '0.24rem 0.45rem', fontSize: '0.75rem' }} onClick={() => setShowFilters(true)}>
+                  {t.filters}
+                </button>
+                <button className="btn" style={{ padding: '0.24rem 0.45rem', fontSize: '0.75rem' }} onClick={() => setView('settings')}>
+                  {t.settings}
+                </button>
+                <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#64748b' }}>{t.language}</span>
+                  <select
+                    value={lang}
+                    onChange={(e) => setLang(e.target.value as Lang)}
+                    style={{ padding: '0.2rem 0.35rem', borderRadius: '7px', border: '1px solid var(--border-color)', fontSize: '0.78rem' }}
+                  >
+                    <option value="fr">{t.language_fr}</option>
+                    <option value="en">{t.language_en}</option>
+                  </select>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </header>
 
       {/* 2. Main Content Uses filtered data */}
-      <main className="main-content" style={{ padding: '0.5rem 2.5vw 80px', maxWidth: '100%', margin: '0 auto', width: '100%' }}>
+      <main className="main-content" style={{
+        padding: isMobile ? '0.2rem 0.3rem 72px' : '0.5rem 2.5vw 80px',
+        maxWidth: '100%',
+        margin: '0 auto',
+        width: '100%'
+      }}>
         <div className="view-shell">
           {view === 'agenda' && (
             <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, height: '100%' }}>
@@ -778,16 +913,17 @@ export default function App() {
                   ⚠️ {t.no_main_schedule} {t.go_settings_prefix} <button onClick={() => setView('settings')} style={{ textDecoration: 'underline', fontWeight: 'bold', background: 'none', border: 'none', cursor: 'pointer', color: 'inherit' }}>{t.settings}</button> {t.go_settings_suffix}
                 </div>
               )}
-              <Agenda events={mainEvents} /> {/* Only show main teacher events */}
+              <Agenda events={mainEvents} isMobile={isMobile} /> {/* Only show main teacher events */}
             </div>
           )}
 
-          {view === 'courses' && <CourseExplorer events={courseEvents} />}
+          {view === 'courses' && <CourseExplorer events={courseEvents} isMobile={isMobile} isTablet={isTablet && !isMobile} />}
 
           {view === 'stats' && (
             <ServiceDashboard
               events={serviceEvents}
               selectedTeacher={selectedTeacher}
+              isMobile={isMobile}
             />
           )}
 
@@ -833,6 +969,7 @@ export default function App() {
               calendars={calendars}
               teacherOptions={teacherOptions}
               selectedTeacher={selectedTeacher}
+              isMobile={isMobile}
               onSelectTeacher={setSelectedTeacher}
               onOpenFix={() => setView('fix')}
               onImport={handleImport}
@@ -847,7 +984,7 @@ export default function App() {
             />
           )}
 
-          {view === 'search' && <SearchResults events={searchResults} query={searchQuery} />}
+          {view === 'search' && <SearchResults events={searchResults} query={searchQuery} isMobile={isMobile} />}
         </div>
       </main>
 
@@ -862,20 +999,33 @@ export default function App() {
       <div style={{
         position: 'fixed', bottom: 0, left: 0, width: '100%',
         background: 'white', borderTop: '1px solid var(--border-color)',
-        display: 'flex', justifyContent: 'space-around', padding: '0.8rem 0',
+        display: 'flex', justifyContent: 'space-around', padding: isMobile ? '0.45rem 0' : '0.8rem 0',
         boxShadow: '0 -2px 10px rgba(0,0,0,0.05)', zIndex: 100
       }}>
-        <NavBtn label={t.schedule} active={view === 'agenda'} onClick={() => setView('agenda')} icon="📅" />
-        <NavBtn label={t.courses} active={view === 'courses'} onClick={() => setView('courses')} icon="📚" />
-        <NavBtn label={t.service} active={view === 'stats'} onClick={() => setView('stats')} icon="📊" />
-        <NavBtn label={t.settings} active={view === 'settings'} onClick={() => setView('settings')} icon="⚙️" />
+        <NavBtn label={t.schedule} active={view === 'agenda'} onClick={() => setView('agenda')} icon="📅" compact={isMobile} />
+        <NavBtn label={t.courses} active={view === 'courses'} onClick={() => setView('courses')} icon="📚" compact={isMobile} />
+        <NavBtn label={t.service} active={view === 'stats'} onClick={() => setView('stats')} icon="📊" compact={isMobile} />
+        {isMobile && (
+          <NavBtn
+            label={lang === 'fr' ? 'Recherche' : 'Search'}
+            active={view === 'search'}
+            onClick={() => {
+              setMobileSearchOpen(true);
+              setMobileMenuOpen(false);
+              setView('search');
+            }}
+            icon="🔎"
+            compact={isMobile}
+          />
+        )}
+        <NavBtn label={t.settings} active={view === 'settings'} onClick={() => setView('settings')} icon="⚙️" compact={isMobile} />
       </div>
     </div>
     </LangContext.Provider>
   );
 }
 
-function NavBtn({ label, active, onClick, icon }: any) {
+function NavBtn({ label, active, onClick, icon, compact = false }: any) {
   return (
     <button
       onClick={onClick}
@@ -886,8 +1036,8 @@ function NavBtn({ label, active, onClick, icon }: any) {
         fontWeight: active ? 600 : 400
       }}
     >
-      <span style={{ fontSize: '1.2rem' }}>{icon}</span>
-      <span style={{ fontSize: '0.75rem' }}>{label}</span>
+      <span style={{ fontSize: compact ? '1.02rem' : '1.2rem' }}>{icon}</span>
+      <span style={{ fontSize: compact ? '0.62rem' : '0.75rem' }}>{label}</span>
     </button>
   );
 }

@@ -5,6 +5,7 @@ import { useLang, useT } from '../i18n';
 interface Props {
     events: NormalizedEvent[];
     selectedTeacher?: string;
+    isMobile?: boolean;
 }
 
 interface Stats {
@@ -24,7 +25,7 @@ interface TeacherData {
     grandTotal: number;
 }
 
-export function ServiceDashboard({ events, selectedTeacher }: Props) {
+export function ServiceDashboard({ events, selectedTeacher, isMobile = false }: Props) {
     const t = useT();
     const lang = useLang();
     const showEmpty = false;
@@ -134,18 +135,18 @@ export function ServiceDashboard({ events, selectedTeacher }: Props) {
     }, [baseEvents, cols, showEmpty, t]);
 
     return (
-        <div className="service-dashboard fade-in page-scroll" style={{ height: '100%', minHeight: 0, overflowY: 'auto', paddingRight: '0.25rem' }}>
+        <div className="service-dashboard fade-in page-scroll" style={{ height: '100%', minHeight: 0, overflowY: 'auto', paddingRight: isMobile ? '0.15rem' : '0.25rem' }}>
             {/* Controls */}
-            <div className="card" style={{ padding: '0.55rem 0.75rem', marginBottom: '0.6rem', display: 'flex', flexWrap: 'wrap', gap: '0.8rem', alignItems: 'center' }}>
+            <div className="card" style={{ padding: isMobile ? '0.4rem 0.5rem' : '0.55rem 0.75rem', marginBottom: '0.6rem', display: 'flex', flexWrap: 'wrap', gap: isMobile ? '0.5rem' : '0.8rem', alignItems: 'center' }}>
                 {selectedTeacher && (
-                    <div style={{ fontSize: '0.78rem', color: '#475569' }}>
+                    <div style={{ fontSize: isMobile ? '0.68rem' : '0.78rem', color: '#475569' }}>
                         {t.teacher}: <strong>{selectedTeacher}</strong>
                     </div>
                 )}
                 <div>
-                    <div style={{ display: 'flex', gap: '0.55rem', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: isMobile ? '0.35rem' : '0.55rem', flexWrap: 'wrap' }}>
                         {colKeys.map(key => (
-                            <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.28rem', cursor: 'pointer', textTransform: 'uppercase', fontSize: '0.72rem' }}>
+                            <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.28rem', cursor: 'pointer', textTransform: 'uppercase', fontSize: isMobile ? '0.64rem' : '0.72rem' }}>
                                 <input type="checkbox" checked={cols[key]} onChange={e => setCols({ ...cols, [key]: e.target.checked })} />
                                 {key}
                             </label>
@@ -154,12 +155,12 @@ export function ServiceDashboard({ events, selectedTeacher }: Props) {
                 </div>
             </div>
 
-            <div className="card" style={{ padding: '0.55rem 0.75rem', marginBottom: '0.6rem' }}>
+            <div className="card" style={{ padding: isMobile ? '0.4rem 0.5rem' : '0.55rem 0.75rem', marginBottom: '0.6rem' }}>
                 <div style={{
                     display: 'flex',
-                    gap: '1.1rem',
+                    gap: isMobile ? '0.7rem' : '1.1rem',
                     flexWrap: 'wrap',
-                    padding: '0.55rem 0.7rem',
+                    padding: isMobile ? '0.4rem 0.5rem' : '0.55rem 0.7rem',
                     background: 'white',
                     borderRadius: 'var(--radius)',
                     boxShadow: 'var(--shadow-xs)'
@@ -194,11 +195,11 @@ export function ServiceDashboard({ events, selectedTeacher }: Props) {
                     </div>
                     <div style={{
                         marginLeft: 'auto',
-                        minWidth: '260px',
+                        minWidth: isMobile ? '100%' : '260px',
                         color: '#64748b',
-                        fontSize: '0.74rem',
-                        borderLeft: '1px solid var(--border-color)',
-                        paddingLeft: '0.8rem'
+                        fontSize: isMobile ? '0.68rem' : '0.74rem',
+                        borderLeft: isMobile ? '0' : '1px solid var(--border-color)',
+                        paddingLeft: isMobile ? '0' : '0.8rem'
                     }}>
                         <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{lang === 'fr' ? 'Non compté' : 'Not counted'}</div>
                         <div style={{ display: 'flex', gap: '0.7rem', flexWrap: 'wrap' }}>
@@ -218,9 +219,9 @@ export function ServiceDashboard({ events, selectedTeacher }: Props) {
             ) : (
                 teacherStats.map(teacher => (
                     <section key={teacher.name} className="card" style={{ padding: '0', marginBottom: '2rem', overflow: 'hidden' }}>
-                        <div style={{ background: '#f8fafc', padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <h2 style={{ margin: 0, fontSize: '1.25rem' }}>{teacher.name}</h2>
-                            <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--primary-color)' }}>
+                        <div style={{ background: '#f8fafc', padding: isMobile ? '0.55rem 0.7rem' : '1rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h2 style={{ margin: 0, fontSize: isMobile ? '0.9rem' : '1.25rem' }}>{teacher.name}</h2>
+                            <div style={{ fontSize: isMobile ? '0.88rem' : '1.2rem', fontWeight: 700, color: 'var(--primary-color)' }}>
                                 {teacher.grandTotal.toFixed(1)} h
                             </div>
                         </div>
@@ -228,12 +229,12 @@ export function ServiceDashboard({ events, selectedTeacher }: Props) {
                         <div className="table-container service-table-container">
                             <table style={{ width: '100%' }}>
                                 <thead>
-                                    <tr style={{ textAlign: 'left', background: '#fff' }}>
-                                        <th style={{ padding: '1rem 1.5rem' }}>{t.subject}</th>
+                                    <tr style={{ textAlign: 'left', background: '#fff', fontSize: isMobile ? '0.66rem' : undefined }}>
+                                        <th style={{ padding: isMobile ? '0.45rem 0.6rem' : '1rem 1.5rem' }}>{t.subject}</th>
                                         {cols.cm && <th style={{ textAlign: 'right' }}>CM</th>}
                                         {cols.td && <th style={{ textAlign: 'right' }}>TD</th>}
                                         {cols.tp && <th style={{ textAlign: 'right' }}>TP</th>}
-                                        <th style={{ textAlign: 'right', padding: '1rem 1.5rem', background: '#f1f5f9' }}>{t.total}</th>
+                                        <th style={{ textAlign: 'right', padding: isMobile ? '0.45rem 0.6rem' : '1rem 1.5rem', background: '#f1f5f9' }}>{t.total}</th>
                                         {cols.exam && <th style={{ textAlign: 'right' }}>{t.exam}</th>}
                                         {cols.reunion && <th style={{ textAlign: 'right' }}>{t.reunion}</th>}
                                         {cols.other && <th style={{ textAlign: 'right' }}>{t.other}</th>}
@@ -241,12 +242,12 @@ export function ServiceDashboard({ events, selectedTeacher }: Props) {
                                 </thead>
                                 <tbody>
                                     {teacher.subjectList.map(row => (
-                                        <tr key={row.name} style={{ borderTop: '1px solid #f1f5f9' }}>
-                                            <td style={{ padding: '0.8rem 1.5rem', fontWeight: 500 }}>{row.name}</td>
+                                        <tr key={row.name} style={{ borderTop: '1px solid #f1f5f9', fontSize: isMobile ? '0.68rem' : undefined }}>
+                                            <td style={{ padding: isMobile ? '0.42rem 0.6rem' : '0.8rem 1.5rem', fontWeight: 500 }}>{row.name}</td>
                                             {cols.cm && <td style={{ textAlign: 'right' }}>{row.cm > 0 ? row.cm.toFixed(1) : '-'}</td>}
                                             {cols.td && <td style={{ textAlign: 'right' }}>{row.td > 0 ? row.td.toFixed(1) : '-'}</td>}
                                             {cols.tp && <td style={{ textAlign: 'right' }}>{row.tp > 0 ? row.tp.toFixed(1) : '-'}</td>}
-                                            <td style={{ textAlign: 'right', padding: '0.8rem 1.5rem', fontWeight: 700, background: '#f8fafc' }}>
+                                            <td style={{ textAlign: 'right', padding: isMobile ? '0.42rem 0.6rem' : '0.8rem 1.5rem', fontWeight: 700, background: '#f8fafc' }}>
                                                 {row.filteredTotal.toFixed(1)}
                                             </td>
                                             {cols.exam && <td style={{ textAlign: 'right' }}>{row.exam > 0 ? row.exam.toFixed(1) : '-'}</td>}

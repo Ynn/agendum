@@ -10,9 +10,11 @@ import { getSubjectColor, getSubjectColorLight } from '../utils/colors';
 
 interface Props {
     events: NormalizedEvent[];
+    isMobile?: boolean;
+    isTablet?: boolean;
 }
 
-export function CourseExplorer({ events }: Props) {
+export function CourseExplorer({ events, isMobile = false, isTablet = false }: Props) {
     const [selectedSubject, setSelectedSubject] = useState('');
     const [subjectFilter, setSubjectFilter] = useState('');
     const [tab, setTab] = useState<'list' | 'calendar' | 'teachers'>('list');
@@ -129,15 +131,216 @@ export function CourseExplorer({ events }: Props) {
     // Get color for selected subject
     const subjectColors = selectedSubject ? getSubjectColor(selectedSubject) : null;
 
+    if (isMobile) {
+        return (
+            <div className="course-mobile fade-in page-scroll" style={{ height: '100%', minHeight: 0, overflowY: 'auto', padding: '0.35rem 0.2rem 0.6rem' }}>
+                {!selectedSubject ? (
+                    <div className="card" style={{ padding: '0.7rem', minHeight: 0 }}>
+                        <h3 style={{
+                            marginTop: 0,
+                            marginBottom: '0.6rem',
+                            fontSize: '0.95rem',
+                            fontWeight: 700,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.35rem'
+                        }}>
+                            <span>📚</span> {t.subjects}
+                        </h3>
+                        <input
+                            type="text"
+                            placeholder={`🔍 ${t.filter_subjects}`}
+                            style={{
+                                padding: '0.55rem',
+                                marginBottom: '0.6rem',
+                                borderRadius: 'var(--radius)',
+                                border: '1px solid var(--border-color)',
+                                width: '100%',
+                                fontSize: '0.85rem',
+                                outline: 'none'
+                            }}
+                            value={subjectFilter}
+                            onChange={(e) => setSubjectFilter(e.target.value)}
+                        />
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+                            {subjects.length} {subjects.length === 1 ? 'matiere' : 'matieres'}
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                            {subjects.map(s => {
+                                const colors = getSubjectColor(s);
+                                return (
+                                    <button
+                                        key={s}
+                                        className="btn"
+                                        onClick={() => {
+                                            setSelectedSubject(s);
+                                            setTab('list');
+                                        }}
+                                        style={{
+                                            justifyContent: 'flex-start',
+                                            fontSize: '0.82rem',
+                                            padding: '0.45rem 0.6rem',
+                                            borderLeft: `4px solid ${colors.bg}`,
+                                            background: '#fff'
+                                        }}
+                                    >
+                                        {s}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="card" style={{ padding: '0', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                        <div style={{
+                            padding: '0.65rem 0.7rem',
+                            borderBottom: '1px solid var(--border-color)',
+                            background: subjectColors ? getSubjectColorLight(selectedSubject) : 'var(--bg-color)'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.45rem' }}>
+                                <button
+                                    className="btn"
+                                    style={{ padding: '0.2rem 0.42rem', fontSize: '0.78rem' }}
+                                    onClick={() => setSelectedSubject('')}
+                                >
+                                    ←
+                                </button>
+                                <h2 style={{
+                                    margin: 0,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.45rem',
+                                    fontSize: '1rem',
+                                    fontWeight: 700
+                                }}>
+                                    <span style={{
+                                        display: 'inline-block',
+                                        width: '6px',
+                                        height: '20px',
+                                        borderRadius: 'var(--radius-sm)',
+                                        background: subjectColors?.bg || 'var(--primary-color)'
+                                    }}></span>
+                                    {selectedSubject}
+                                </h2>
+                            </div>
+
+                            <div className="tabs" style={{ display: 'flex', gap: '0.35rem', marginBottom: '0.45rem' }}>
+                                <button className={`btn ${tab === 'list' ? 'btn-primary' : ''}`} onClick={() => setTab('list')} style={{ fontSize: '0.74rem', padding: '0.2rem 0.4rem' }}>
+                                    📋 {t.list}
+                                </button>
+                                <button className={`btn ${tab === 'calendar' ? 'btn-primary' : ''}`} onClick={() => setTab('calendar')} style={{ fontSize: '0.74rem', padding: '0.2rem 0.4rem' }}>
+                                    📅 {t.calendar}
+                                </button>
+                                <button className={`btn ${tab === 'teachers' ? 'btn-primary' : ''}`} onClick={() => setTab('teachers')} style={{ fontSize: '0.74rem', padding: '0.2rem 0.4rem' }}>
+                                    👥 {t.by_teacher}
+                                </button>
+                            </div>
+
+                            <div style={{
+                                display: 'flex',
+                                gap: '0.8rem',
+                                flexWrap: 'wrap',
+                                padding: '0.45rem 0.55rem',
+                                background: 'white',
+                                borderRadius: 'var(--radius)',
+                                boxShadow: 'var(--shadow-xs)'
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                    <span style={{ fontSize: '1rem' }}>⏱️</span>
+                                    <div>
+                                        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.total_label}</div>
+                                        <div style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-color)' }}>{stats.total.toFixed(1)}h</div>
+                                    </div>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                    <span style={{ fontSize: '1rem' }}>📖</span>
+                                    <div>
+                                        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>CM</div>
+                                        <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#1e40af' }}>{stats.cm.toFixed(1)}h</div>
+                                    </div>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                    <span style={{ fontSize: '1rem' }}>✏️</span>
+                                    <div>
+                                        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TD</div>
+                                        <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#166534' }}>{stats.td.toFixed(1)}h</div>
+                                    </div>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                    <span style={{ fontSize: '1rem' }}>🔬</span>
+                                    <div>
+                                        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TP</div>
+                                        <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#374151' }}>{stats.tp.toFixed(1)}h</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style={{ padding: '0.45rem', minHeight: 0 }}>
+                            {tab === 'list' && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    {courseEvents.map((ev, i) => (
+                                        <div key={i} className="card" style={{ padding: '0.5rem' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.4rem', marginBottom: '0.2rem' }}>
+                                                <strong style={{ fontSize: '0.82rem' }}>{ev.type_}</strong>
+                                                <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{ev.duration_hours}h</span>
+                                            </div>
+                                            <div style={{ fontSize: '0.77rem', color: 'var(--text-secondary)' }}>
+                                                {formatDate((ev as any).start_date)} • {formatTime((ev as any).start_date)}-{formatTime((ev as any).end_date)}
+                                            </div>
+                                            <div style={{ fontSize: '0.76rem', marginTop: '0.18rem' }}>{splitTeachers((ev as any).extractedTeacher).join(', ') || '—'}</div>
+                                            <div style={{ fontSize: '0.73rem', color: 'var(--text-muted)' }}>{ev.raw.location || '—'}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {tab === 'calendar' && (
+                                <div style={{ height: '66vh', minHeight: 380 }}>
+                                    <FullCalendar
+                                        plugins={[dayGridPlugin, timeGridPlugin, listPlugin]}
+                                        initialView="listWeek"
+                                        headerToolbar={{
+                                            left: 'prev,next',
+                                            center: 'title',
+                                            right: 'dayGridMonth,listWeek'
+                                        }}
+                                        events={calendarEvents}
+                                        locale={lang === 'fr' ? frLocale : undefined}
+                                        firstDay={1}
+                                        height="100%"
+                                    />
+                                </div>
+                            )}
+
+                            {tab === 'teachers' && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    {stats.teachers.map(([name, s]) => (
+                                        <div key={name} className="card" style={{ padding: '0.45rem 0.55rem' }}>
+                                            <div style={{ fontWeight: 700, fontSize: '0.84rem', marginBottom: '0.25rem' }}>{name}</div>
+                                            <div style={{ fontSize: '0.76rem', color: '#475569' }}>
+                                                CM {s.cm.toFixed(1)}h • TD {s.td.toFixed(1)}h • TP {s.tp.toFixed(1)}h • {t.total} {s.total.toFixed(1)}h
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    }
+
     return (
-        <div className="course-explorer fade-in full-height-view" style={{ display: 'flex', minHeight: 0, gap: '1rem', height: '100%' }}>
+        <div className="course-explorer fade-in full-height-view" style={{ display: 'flex', minHeight: 0, gap: isTablet ? '0.6rem' : '1rem', height: '100%' }}>
 
             {/* Sidebar: Subject List - LEFT SIDE */}
             <div className="card" style={{
-                width: '320px',
+                width: isTablet ? '248px' : '320px',
                 display: 'flex',
                 flexDirection: 'column',
-                padding: '1rem',
+                padding: isTablet ? '0.7rem' : '1rem',
                 height: '100%',
                 minHeight: 0,
                 overflow: 'hidden',
@@ -145,8 +348,8 @@ export function CourseExplorer({ events }: Props) {
             }}>
                 <h3 style={{
                     marginTop: 0,
-                    marginBottom: '1rem',
-                    fontSize: '1.1rem',
+                    marginBottom: isTablet ? '0.65rem' : '1rem',
+                    fontSize: isTablet ? '0.92rem' : '1.1rem',
                     fontWeight: 700,
                     display: 'flex',
                     alignItems: 'center',
@@ -158,12 +361,12 @@ export function CourseExplorer({ events }: Props) {
                     type="text"
                     placeholder={`🔍 ${t.filter_subjects}`}
                     style={{
-                        padding: '0.75rem',
-                        marginBottom: '1rem',
+                        padding: isTablet ? '0.52rem' : '0.75rem',
+                        marginBottom: isTablet ? '0.7rem' : '1rem',
                         borderRadius: 'var(--radius)',
                         border: '1px solid var(--border-color)',
                         width: '100%',
-                        fontSize: '0.9rem',
+                        fontSize: isTablet ? '0.8rem' : '0.9rem',
                         transition: 'all var(--transition-base)',
                         outline: 'none'
                     }}
@@ -179,9 +382,9 @@ export function CourseExplorer({ events }: Props) {
                     }}
                 />
                 <div style={{
-                    fontSize: '0.75rem',
+                    fontSize: isTablet ? '0.66rem' : '0.75rem',
                     color: 'var(--text-muted)',
-                    marginBottom: '0.75rem',
+                    marginBottom: isTablet ? '0.5rem' : '0.75rem',
                     textTransform: 'uppercase',
                     letterSpacing: '0.05em',
                     fontWeight: 600
@@ -193,7 +396,7 @@ export function CourseExplorer({ events }: Props) {
                     overflowY: 'auto',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: '0.5rem',
+                    gap: isTablet ? '0.36rem' : '0.5rem',
                     minHeight: 0,
                     paddingRight: '0.25rem'
                 }}>
@@ -205,13 +408,13 @@ export function CourseExplorer({ events }: Props) {
                                 key={s}
                                 onClick={() => setSelectedSubject(s)}
                                 style={{
-                                    padding: '0.75rem',
+                                    padding: isTablet ? '0.55rem' : '0.75rem',
                                     cursor: 'pointer',
                                     borderRadius: 'var(--radius)',
                                     background: isSelected ? colors.bg : 'transparent',
                                     color: isSelected ? colors.text : 'var(--text-color)',
                                     fontWeight: isSelected ? 600 : 500,
-                                    fontSize: '0.9rem',
+                                    fontSize: isTablet ? '0.78rem' : '0.9rem',
                                     transition: 'all var(--transition-base)',
                                     border: `2px solid ${isSelected ? colors.bg : 'transparent'}`,
                                     boxShadow: isSelected ? 'var(--shadow-sm)' : 'none',
@@ -272,36 +475,36 @@ export function CourseExplorer({ events }: Props) {
                     <>
                         {/* Header & Stats Header */}
                         <div style={{
-                            padding: '0.7rem 0.9rem',
+                            padding: isTablet ? '0.55rem 0.65rem' : '0.7rem 0.9rem',
                             borderBottom: '1px solid var(--border-color)',
                             background: subjectColors ? getSubjectColorLight(selectedSubject) : 'var(--bg-color)'
                         }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isTablet ? '0.35rem' : '0.5rem', flexWrap: 'wrap', gap: isTablet ? '0.35rem' : '0.5rem' }}>
                                 <h2 style={{
                                     margin: 0,
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: '0.45rem',
-                                    fontSize: '1.05rem',
+                                    fontSize: isTablet ? '0.94rem' : '1.05rem',
                                     fontWeight: 700
                                 }}>
                                     <span style={{
                                         display: 'inline-block',
                                         width: '6px',
-                                        height: '20px',
+                                        height: isTablet ? '17px' : '20px',
                                         borderRadius: 'var(--radius-sm)',
                                         background: subjectColors?.bg || 'var(--primary-color)'
                                     }}></span>
                                     {selectedSubject}
                                 </h2>
                                 <div className="tabs" style={{ display: 'flex', gap: '0.5rem' }}>
-                                    <button className={`btn ${tab === 'list' ? 'btn-primary' : ''}`} onClick={() => setTab('list')} style={{ fontSize: '0.75rem', padding: '0.2rem 0.45rem' }}>
+                                    <button className={`btn ${tab === 'list' ? 'btn-primary' : ''}`} onClick={() => setTab('list')} style={{ fontSize: isTablet ? '0.68rem' : '0.75rem', padding: isTablet ? '0.17rem 0.34rem' : '0.2rem 0.45rem' }}>
                                         📋 {t.list}
                                     </button>
-                                    <button className={`btn ${tab === 'calendar' ? 'btn-primary' : ''}`} onClick={() => setTab('calendar')} style={{ fontSize: '0.75rem', padding: '0.2rem 0.45rem' }}>
+                                    <button className={`btn ${tab === 'calendar' ? 'btn-primary' : ''}`} onClick={() => setTab('calendar')} style={{ fontSize: isTablet ? '0.68rem' : '0.75rem', padding: isTablet ? '0.17rem 0.34rem' : '0.2rem 0.45rem' }}>
                                         📅 {t.calendar}
                                     </button>
-                                    <button className={`btn ${tab === 'teachers' ? 'btn-primary' : ''}`} onClick={() => setTab('teachers')} style={{ fontSize: '0.75rem', padding: '0.2rem 0.45rem' }}>
+                                    <button className={`btn ${tab === 'teachers' ? 'btn-primary' : ''}`} onClick={() => setTab('teachers')} style={{ fontSize: isTablet ? '0.68rem' : '0.75rem', padding: isTablet ? '0.17rem 0.34rem' : '0.2rem 0.45rem' }}>
                                         👥 {t.by_teacher}
                                     </button>
                                 </div>

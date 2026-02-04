@@ -5,6 +5,7 @@ import { msUntilManualRefreshAllowed } from '../utils/remoteCalendars';
 
 interface Props {
     calendars: Calendar[];
+    isMobile?: boolean;
     onToggle: (id: string) => void;
     onToggleStats: (id: string) => void;
     onRemove: (id: string) => void;
@@ -13,7 +14,7 @@ interface Props {
     onAdd: () => void;
 }
 
-export function CalendarManager({ calendars, onToggle, onToggleStats, onRemove, onRefresh, onRename, onAdd }: Props) {
+export function CalendarManager({ calendars, isMobile = false, onToggle, onToggleStats, onRemove, onRefresh, onRename, onAdd }: Props) {
     const t = useT();
     const [editingId, setEditingId] = useState<string | null>(null);
     const [draftName, setDraftName] = useState('');
@@ -30,21 +31,21 @@ export function CalendarManager({ calendars, onToggle, onToggleStats, onRemove, 
     };
 
     return (
-        <div className="card calendar-manager fade-in" style={{ padding: '0.75rem', flex: '1 1 300px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h3 style={{ margin: 0 }}>{t.calendars}</h3>
-                <button onClick={onAdd} className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>
+        <div className="card calendar-manager fade-in" style={{ padding: isMobile ? '0.55rem' : '0.75rem', flex: '1 1 300px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isMobile ? '0.6rem' : '1rem' }}>
+                <h3 style={{ margin: 0, fontSize: isMobile ? '0.86rem' : undefined }}>{t.calendars}</h3>
+                <button onClick={onAdd} className="btn btn-primary" style={{ padding: isMobile ? '0.24rem 0.45rem' : '0.4rem 0.8rem', fontSize: isMobile ? '0.72rem' : '0.85rem' }}>
                     + {t.import}
                 </button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '0.38rem' : '0.5rem' }}>
                 {calendars.length === 0 && <p style={{ color: '#ccc', fontStyle: 'italic' }}>{t.no_calendars_imported}</p>}
 
                 {calendars.map(cal => (
                     <div key={cal.id} style={{
                         display: 'flex', alignItems: 'center', gap: '0.8rem',
-                        padding: '0.5rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)',
+                        padding: isMobile ? '0.35rem' : '0.5rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)',
                         background: 'white'
                     }}>
                         {/* Visibility Toggle */}
@@ -77,22 +78,22 @@ export function CalendarManager({ calendars, onToggle, onToggleStats, onRemove, 
                                     style={{ width: '100%', fontWeight: 500, padding: '0.2rem 0.35rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
                                 />
                             ) : (
-                                <div style={{ fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cal.name}</div>
+                                <div style={{ fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: isMobile ? '0.78rem' : undefined }}>{cal.name}</div>
                             )}
 
                             {cal.remote?.sourceUrl && (
-                                <div style={{ fontSize: '0.68rem', color: '#94a3b8', marginTop: '0.15rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                <div style={{ fontSize: isMobile ? '0.62rem' : '0.68rem', color: '#94a3b8', marginTop: '0.15rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                     {cal.remote.sourceUrl}
                                 </div>
                             )}
                             {cal.remote?.sourceUrl && (
-                                <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '0.2rem' }}>
+                                <div style={{ fontSize: isMobile ? '0.64rem' : '0.72rem', color: '#64748b', marginTop: '0.2rem' }}>
                                     {t.last_sync_prefix} {cal.remote.lastSyncedAt ? new Date(cal.remote.lastSyncedAt).toLocaleString() : t.last_sync_never}
                                     {cal.remote.lastError ? ` • ${t.sync_error}` : ''}
                                 </div>
                             )}
                             {/* Stats Toggle */}
-                            <label style={{ fontSize: '0.75rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer', marginTop: '0.2rem' }}>
+                            <label style={{ fontSize: isMobile ? '0.67rem' : '0.75rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer', marginTop: '0.2rem' }}>
                                 <input
                                     type="checkbox"
                                     checked={cal.includeInStats}
@@ -106,7 +107,7 @@ export function CalendarManager({ calendars, onToggle, onToggleStats, onRemove, 
                             <button
                                 onClick={() => { void onRefresh(cal.id); }}
                                 className="btn"
-                                style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
+                                style={{ padding: isMobile ? '0.16rem 0.34rem' : '0.2rem 0.5rem', fontSize: isMobile ? '0.66rem' : '0.75rem' }}
                                 disabled={msUntilManualRefreshAllowed(cal.remote.lastManualRefreshAt) > 0}
                                 title={
                                     msUntilManualRefreshAllowed(cal.remote.lastManualRefreshAt) > 0
@@ -123,7 +124,7 @@ export function CalendarManager({ calendars, onToggle, onToggleStats, onRemove, 
                         <button
                             onClick={() => startRename(cal)}
                             className="btn"
-                            style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
+                            style={{ padding: isMobile ? '0.16rem 0.34rem' : '0.2rem 0.5rem', fontSize: isMobile ? '0.66rem' : '0.75rem' }}
                             title={t.rename}
                         >
                             {t.rename}
@@ -131,7 +132,7 @@ export function CalendarManager({ calendars, onToggle, onToggleStats, onRemove, 
 
                         <button
                             onClick={() => onRemove(cal.id)}
-                            style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '1.2rem', padding: '0 0.5rem' }}
+                            style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: isMobile ? '1rem' : '1.2rem', padding: isMobile ? '0 0.25rem' : '0 0.5rem' }}
                             title="Remove"
                         >
                             &times;

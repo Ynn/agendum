@@ -4,9 +4,10 @@ import { useLang, useT } from '../i18n';
 interface Props {
     events: NormalizedEvent[];
     query: string;
+    isMobile?: boolean;
 }
 
-export function SearchResults({ events, query }: Props) {
+export function SearchResults({ events, query, isMobile = false }: Props) {
     if (!query) return null;
     const t = useT();
     const lang = useLang();
@@ -25,7 +26,7 @@ export function SearchResults({ events, query }: Props) {
     };
 
     return (
-        <div className="search-results fade-in page-scroll" style={{ padding: '1rem', maxWidth: '100%', margin: '0 auto' }}>
+        <div className="search-results fade-in page-scroll" style={{ padding: '1rem', maxWidth: '100%', margin: '0 auto', height: '100%', minHeight: 0, overflowY: 'auto' }}>
             <h2 style={{ marginBottom: '1rem' }}>
                 {t.search_results_for} <span style={{ color: 'var(--primary-color)' }}>"{query}"</span>
             </h2>
@@ -34,6 +35,25 @@ export function SearchResults({ events, query }: Props) {
             {events.length === 0 ? (
                 <div className="card" style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>
                     {t.no_results}
+                </div>
+            ) : isMobile ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                    {events.map((ev, i) => (
+                        <div key={i} className="card" style={{ padding: '0.65rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.4rem' }}>
+                                <div style={{ width: 10, height: 10, borderRadius: '50%', background: (ev as any).color || '#ccc', flexShrink: 0 }}></div>
+                                <div style={{ fontWeight: 700, fontSize: '0.92rem', lineHeight: 1.2 }}>{ev.subject}</div>
+                            </div>
+                            <div style={{ fontSize: '0.8rem', color: '#334155', display: 'grid', gap: '0.25rem' }}>
+                                <div><strong>{t.type}:</strong> {ev.type_}</div>
+                                <div><strong>{t.date}:</strong> {formatDate((ev as any).start_date)}</div>
+                                <div><strong>{t.time}:</strong> {formatTime((ev as any).start_date)} - {formatTime((ev as any).end_date)}</div>
+                                <div><strong>{t.teacher}:</strong> {(ev as any).extractedTeacher || t.unknown_teacher}</div>
+                                <div><strong>{t.location}:</strong> {ev.raw.location || '-'}</div>
+                                <div style={{ color: '#64748b' }}><strong>{t.calendar_source}:</strong> {(ev as any).calendarName}</div>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             ) : (
                 <div className="card table-container">

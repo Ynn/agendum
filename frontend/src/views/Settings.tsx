@@ -8,6 +8,7 @@ interface Props {
     calendars: Calendar[];
     teacherOptions: { name: string; count: number }[];
     selectedTeacher: string;
+    isMobile?: boolean;
     onSelectTeacher: (name: string) => void;
     onOpenFix: () => void;
     onImport: (name: string, events: NormalizedEvent[], isService: boolean) => void;
@@ -23,6 +24,7 @@ export function Settings({
     calendars,
     teacherOptions,
     selectedTeacher,
+    isMobile = false,
     onSelectTeacher,
     onOpenFix,
     onImport,
@@ -37,19 +39,25 @@ export function Settings({
     const t = useT();
 
     return (
-        <div className="settings-view fade-in page-scroll" style={{ padding: '1rem', maxWidth: '100%', margin: '0 auto', height: '100%', overflowY: 'auto' }}>
-            <h2 style={{ marginBottom: '2rem' }}>{t.settings_title}</h2>
+        <div className="settings-view fade-in page-scroll" style={{ padding: isMobile ? '0.55rem' : '1rem', maxWidth: '100%', margin: '0 auto', height: '100%', overflowY: 'auto' }}>
+            <h2 style={{ marginBottom: isMobile ? '0.9rem' : '2rem', fontSize: isMobile ? '1rem' : undefined }}>{t.settings_title}</h2>
 
-            <section className="card" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
-                <h3 style={{ marginTop: 0 }}>{t.teacher_identity}</h3>
-                <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '1rem' }}>
+            <section className="card" style={{ padding: isMobile ? '0.8rem' : '1.5rem', marginBottom: isMobile ? '0.7rem' : '2rem' }}>
+                <h3 style={{ marginTop: 0, fontSize: isMobile ? '0.92rem' : undefined }}>{t.teacher_identity}</h3>
+                <p style={{ color: '#64748b', fontSize: isMobile ? '0.76rem' : '0.9rem', marginBottom: isMobile ? '0.6rem' : '1rem' }}>
                     {t.teacher_identity_desc}
                 </p>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem' }}>{t.teacher_select_label}</label>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.35rem', fontSize: isMobile ? '0.8rem' : undefined }}>{t.teacher_select_label}</label>
                 <select
                     value={selectedTeacher}
                     onChange={(e) => onSelectTeacher(e.target.value)}
-                    style={{ padding: '0.6rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', width: '100%' }}
+                    style={{
+                        padding: isMobile ? '0.4rem 0.5rem' : '0.6rem',
+                        borderRadius: 'var(--radius)',
+                        border: '1px solid var(--border-color)',
+                        width: '100%',
+                        fontSize: isMobile ? '0.8rem' : undefined
+                    }}
                 >
                     <option value="">{t.teacher_select_none}</option>
                     {teacherOptions.map(opt => (
@@ -61,25 +69,26 @@ export function Settings({
             </section>
 
             {/* 2. Data Management */}
-            <section className="card" style={{ padding: '1.5rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <h3 style={{ margin: 0 }}>{t.data_sources}</h3>
+            <section className="card" style={{ padding: isMobile ? '0.8rem' : '1.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isMobile ? '0.6rem' : '1rem' }}>
+                    <h3 style={{ margin: 0, fontSize: isMobile ? '0.92rem' : undefined }}>{t.data_sources}</h3>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button className="btn" onClick={onOpenFix}>
+                        <button className="btn" onClick={onOpenFix} style={{ fontSize: isMobile ? '0.74rem' : undefined, padding: isMobile ? '0.2rem 0.45rem' : undefined }}>
                             {t.fix}
                         </button>
-                        <button onClick={() => setShowImport(true)} className="btn btn-primary">
+                        <button onClick={() => setShowImport(true)} className="btn btn-primary" style={{ fontSize: isMobile ? '0.74rem' : undefined, padding: isMobile ? '0.2rem 0.45rem' : undefined }}>
                             {t.import_new_source}
                         </button>
                     </div>
                 </div>
 
-                <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
+                <p style={{ color: '#64748b', fontSize: isMobile ? '0.76rem' : '0.9rem', marginBottom: isMobile ? '0.8rem' : '1.5rem' }}>
                     {t.data_sources_desc}
                 </p>
 
                 <CalendarManager
                     calendars={calendars}
+                    isMobile={isMobile}
                     onToggle={onToggle}
                     onToggleStats={onToggleStats}
                     onRemove={onRemove}
@@ -95,6 +104,7 @@ export function Settings({
                     background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
                 }}>
                     <ImportZone
+                        isMobile={isMobile}
                         onImport={(n, e, s) => { onImport(n, e, s); setShowImport(false); }}
                         onImportFromUrl={async (url, name, isService) => {
                             await onImportFromUrl(url, name, isService);

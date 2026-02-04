@@ -224,13 +224,7 @@ th {
 /* Mobile Adjustments */
 @media (max-width: 768px) {
   .app-container {
-    padding: 0.5rem;
-  }
-
-  header {
-    flex-direction: column;
-    gap: 1rem;
-    text-align: center;
+    padding: 0;
   }
 
   .filter-bar {
@@ -732,18 +726,9 @@ button:focus {
 }
 
 /* Responsive improvements for Course Explorer */
-@media (max-width: 1024px) {
-  .course-explorer {
-    flex-direction: column-reverse !important;
-  }
-
-  .course-explorer>.card:first-child {
-    width: 100% !important;
-  }
-
+@media (min-width: 769px) and (max-width: 1024px) {
   .course-explorer>.card:last-child {
-    width: 100% !important;
-    max-height: 300px;
+    min-width: 0;
   }
 }
 
@@ -800,6 +785,28 @@ button:focus {
 
 .agenda-container .fc .fc-button .fc-icon {
   font-size: 0.9rem;
+}
+
+.agenda-mobile .fc .fc-toolbar-title {
+  font-size: 0.86rem !important;
+}
+
+.agenda-mobile .fc .fc-button {
+  font-size: 0.68rem !important;
+  padding: 0.16rem 0.34rem !important;
+}
+
+.agenda-mobile .fc .fc-timegrid-slot-label-cushion,
+.agenda-mobile .fc .fc-col-header-cell-cushion {
+  font-size: 0.68rem;
+}
+
+.agenda-mobile .fc .fc-timegrid-axis-cushion {
+  font-size: 0.62rem;
+}
+
+.agenda-mobile .fc .fc-timegrid-event {
+  border-radius: 6px;
 }
 
 .fc-event-title {

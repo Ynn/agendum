@@ -10,7 +10,13 @@ import frLocale from '@fullcalendar/core/locales/fr';
 import { useLang, useT } from '../i18n';
 import { getSubjectColor } from '../utils/colors';
 
-export function Agenda({ events }: { events: (NormalizedEvent & { color?: string })[] }) {
+export function Agenda({
+    events,
+    isMobile = false
+}: {
+    events: (NormalizedEvent & { color?: string })[];
+    isMobile?: boolean;
+}) {
     const lang = useLang();
     const t = useT();
     const calendarRef = useRef<FullCalendar | null>(null);
@@ -80,6 +86,9 @@ export function Agenda({ events }: { events: (NormalizedEvent & { color?: string
         const d = weekToDate(weekValue);
         return d ? toDateInput(d) : '';
     }, [weekValue]);
+    const mobileDayLetters = lang === 'fr'
+        ? ['D', 'L', 'M', 'M', 'J', 'V', 'S']
+        : ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
     useEffect(() => {
         if (!isListView) return;
@@ -134,10 +143,10 @@ export function Agenda({ events }: { events: (NormalizedEvent & { color?: string
 
         // Build compact title: "TYPE Subject • Teacher • Room"
         let title = `${ev.type_} ${ev.subject}`;
-        if (teacher && teacher !== '—') {
+        if (!isMobile && teacher && teacher !== '—') {
             title += ` • ${teacher}`;
         }
-        if (location) {
+        if (!isMobile && location) {
             title += ` • ${location}`;
         }
 
@@ -158,10 +167,10 @@ export function Agenda({ events }: { events: (NormalizedEvent & { color?: string
     });
 
     return (
-        <div className="agenda-container" style={{
+        <div className={`agenda-container ${isMobile ? 'agenda-mobile' : ''}`} style={{
             background: 'white',
-            padding: '0.75rem',
-            borderRadius: 'var(--radius)',
+            padding: isMobile ? '0.2rem' : '0.75rem',
+            borderRadius: isMobile ? '10px' : 'var(--radius)',
             boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
             display: 'flex',
             flexDirection: 'column',
@@ -178,9 +187,9 @@ export function Agenda({ events }: { events: (NormalizedEvent & { color?: string
                 }}
                 visibleRange={listVisibleRange}
                 headerToolbar={{
-                    left: 'prev,next today',
+                    left: isMobile ? 'prev,next' : 'prev,next today',
                     center: 'title',
-                    right: 'timeGridDay,timeGridWeek,dayGridMonth,listRange'
+                    right: isMobile ? 'today,timeGridWeek,dayGridMonth' : 'timeGridDay,timeGridWeek,dayGridMonth,listRange'
                 }}
                 buttonText={{
                     today: lang === 'fr' ? 'Aujourd’hui' : 'Today',
@@ -194,6 +203,12 @@ export function Agenda({ events }: { events: (NormalizedEvent & { color?: string
                 eventClick={(info) => {
                     setSelectedEvent(info.event);
                 }}
+                dayHeaderContent={(arg) => {
+                    if (!isMobile) return undefined;
+                    const letter = mobileDayLetters[arg.date.getDay()] || '';
+                    const dayNum = pad2(arg.date.getDate());
+                    return `${letter} ${dayNum}`;
+                }}
                 eventContent={(arg) => {
                     const teacher = arg.event.extendedProps.teacher || '';
                     const location = arg.event.extendedProps.location || '';
@@ -201,7 +216,20 @@ export function Agenda({ events }: { events: (NormalizedEvent & { color?: string
 
                     // For list view, use default rendering
                     if (arg.view.type.includes('list')) {
+                        if (isMobile) return { html: title };
                         return { html: arg.event.title };
+                    }
+
+                    if (isMobile) {
+                        return {
+                            html: `
+                                <div class="fc-event-main-frame" style="padding: 1px 3px; height: 100%; display: flex; align-items: center; overflow: hidden;">
+                                    <div class="fc-event-title fc-sticky" style="font-weight: 600; font-size: 0.68rem; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                        ${title}
+                                    </div>
+                                </div>
+                            `
+                        };
                     }
 
                     // Custom multi-line rendering for grid/time views
@@ -221,9 +249,9 @@ export function Agenda({ events }: { events: (NormalizedEvent & { color?: string
                 }}
                 locale={lang === 'fr' ? frLocale : undefined}
                 firstDay={1}
-                height="auto"
-                slotMinTime="08:00:00"
-                slotMaxTime="20:00:00"
+                height={isMobile ? '100%' : 'auto'}
+                slotMinTime={isMobile ? '07:30:00' : '08:00:00'}
+                slotMaxTime={isMobile ? '20:30:00' : '20:00:00'}
                 allDaySlot={false}
                 nowIndicator={true}
                 datesSet={(arg) => {
@@ -233,6 +261,7 @@ export function Agenda({ events }: { events: (NormalizedEvent & { color?: string
                 }}
             />
 
+            {!isMobile && (
             <div className="agenda-nav">
                 <div className="agenda-nav-buttons">
                     <button
@@ -342,6 +371,7 @@ export function Agenda({ events }: { events: (NormalizedEvent & { color?: string
                     </div>
                 )}
             </div>
+            )}
 
             {selectedEvent && (
                 <div className="event-modal-overlay">
