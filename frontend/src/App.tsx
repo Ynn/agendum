@@ -78,6 +78,7 @@ type NormalizationRules = {
 
 const withCalendarDefaults = (cal: Calendar): Calendar => ({
   ...cal,
+  visible: cal.visible ?? true,
   includeInStats: cal.includeInStats ?? true,
   remote: cal.remote
     ? {
@@ -347,7 +348,7 @@ export default function App() {
       id: newId,
       name: name,
       color: colors[calendars.length % colors.length],
-      visible: true,
+      visible: calendars.length === 0,
       includeInStats: isService,
       events: events,
       remote: sourceUrl
@@ -940,24 +941,8 @@ export default function App() {
 
   // Derived datasets for Views (Consume filteredEvents)
 
-  // Agenda View: Only Main Calendar + Filtered
-  const mainEvents = useMemo(() => {
-    // If filters are active (search or advanced), we show matches from ALL calendars? 
-    // Or just matches from main? 
-    // User request: "Global searches...". Agenda is personal.
-    // If advanced filters are ON, maybe we should apply them to Agenda too? Yes.
-    if (!mainCalendarId) return [];
-    // Filter the *Filtered* events to only include those from Main Calendar
-    // This allows filtering your own schedule by time/date.
-    return filteredEvents.filter(ev => {
-      // Find if this event belongs to main calendar
-      // We don't have calendar ID on event directly unless we map it. 
-      // We mapped `calendarName`. Let's assume unique names or map ID.
-      // Better: Look up in main calendar events? Expensive.
-      // Correct: Add `calendarId` to allEvents map.
-      return (ev as any).calendarId === mainCalendarId;
-    });
-  }, [filteredEvents, mainCalendarId]);
+  // Agenda View: Visible Calendars + Filtered
+  const scheduleEvents = useMemo(() => applyFilters('visible'), [allEvents, filters, mainCalendarId]);
 
   // Search Results uses `filteredEvents` directly
   // Service uses `serviceEvents` (independent from visibility)
@@ -1161,7 +1146,7 @@ export default function App() {
                   ⚠️ {t.no_main_schedule} {t.go_settings_prefix} <button onClick={() => setView('settings')} style={{ textDecoration: 'underline', fontWeight: 'bold', background: 'none', border: 'none', cursor: 'pointer', color: 'inherit' }}>{t.settings}</button> {t.go_settings_suffix}
                 </div>
               )}
-              <Agenda events={mainEvents} isMobile={isMobile} /> {/* Only show main teacher events */}
+              <Agenda events={scheduleEvents} isMobile={isMobile} /> {/* Show visible calendars */}
             </div>
           )}
 

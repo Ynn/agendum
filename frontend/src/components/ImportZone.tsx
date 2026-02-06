@@ -23,7 +23,21 @@ export function ImportZone({ isMobile = false, onImport, onImportFromUrl, onCanc
     const fileInputRef = useRef<HTMLInputElement>(null);
     const t = useT();
 
+    const isIcsFile = (file: File) => file.name.toLowerCase().endsWith('.ics');
+
+    const isAllowedCalendarUrl = (url: URL) => {
+        const href = url.toString().toLowerCase();
+        if (url.pathname.toLowerCase().endsWith('.ics')) return true;
+        if (url.hostname.toLowerCase().includes('shu')) return true;
+        if (href.includes('/shu/')) return true;
+        return false;
+    };
+
     const processFile = (file: File) => {
+        if (!isIcsFile(file)) {
+            setError(t.error_only_ics);
+            return;
+        }
         setLoading(true);
         setError(null);
         const reader = new FileReader();
@@ -49,10 +63,15 @@ export function ImportZone({ isMobile = false, onImport, onImportFromUrl, onCanc
             setError(t.error_parse);
             return;
         }
+        let parsedUrl: URL;
         try {
-            new URL(calendarUrl.trim());
+            parsedUrl = new URL(calendarUrl.trim());
         } catch {
             setError(t.qr_invalid_url);
+            return;
+        }
+        if (!isAllowedCalendarUrl(parsedUrl)) {
+            setError(t.error_only_shu);
             return;
         }
 
@@ -60,7 +79,7 @@ export function ImportZone({ isMobile = false, onImport, onImportFromUrl, onCanc
         setError(null);
         try {
             const name = calendarName.trim();
-            await onImportFromUrl(calendarUrl.trim(), name, type === 'teacher');
+            await onImportFromUrl(parsedUrl.toString(), name, type === 'teacher');
         } catch (err) {
             console.error(err);
             setError(err instanceof Error ? err.message : t.error_parse);

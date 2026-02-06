@@ -51,11 +51,12 @@ export function CalendarManager({ calendars, isMobile = false, onToggle, onToggl
                             style={{
                                 width: '16px', height: '16px', borderRadius: '50%',
                                 background: cal.visible ? cal.color : 'transparent',
-                                border: `2px solid ${cal.color}`, cursor: 'pointer',
+                                border: `2px solid ${cal.color}`,
+                                cursor: 'pointer',
                                 flexShrink: 0,
                                 display: 'flex', alignItems: 'center', justifyContent: 'center'
                             }}
-                            title="Toggle Visibility"
+                            title={t.source_visible}
                         >
                             {/* Visual indicator handled by background, maybe add checkmark or dot if desired */}
                         </div>
