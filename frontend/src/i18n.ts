@@ -82,7 +82,6 @@ export const strings = {
     error_parse: 'Failed to parse file.',
     error_parse_desc: 'Check the file format and try again.',
     error_only_ics: 'Only .ics files are supported.',
-    error_only_shu: 'Only .ics URLs or SHU addresses are allowed.',
     error_label: 'Error',
 
     grouping: 'Grouping',
@@ -234,7 +233,6 @@ export const strings = {
     error_parse: 'Impossible de parser le fichier.',
     error_parse_desc: 'Vérifiez le format puis réessayez.',
     error_only_ics: 'Seuls les fichiers .ics sont acceptés.',
-    error_only_shu: 'Seules les URL .ics ou les adresses SHU sont acceptées.',
     error_label: 'Erreur',
 
     grouping: 'Regroupement',
