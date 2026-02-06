@@ -90,8 +90,11 @@ export function Settings({
                     </div>
                 </div>
 
-                <p style={{ color: 'var(--text-muted)', fontSize: isMobile ? '0.76rem' : '0.9rem', marginBottom: isMobile ? '0.8rem' : '1.5rem' }}>
+                <p style={{ color: 'var(--text-muted)', fontSize: isMobile ? '0.76rem' : '0.9rem', marginBottom: isMobile ? '0.5rem' : '0.9rem' }}>
                     {t.data_sources_desc}
+                </p>
+                <p style={{ color: 'var(--text-muted)', fontSize: isMobile ? '0.72rem' : '0.85rem', marginBottom: isMobile ? '0.8rem' : '1.5rem' }}>
+                    {t.data_sources_visible_hint}
                 </p>
 
                 <CalendarManager

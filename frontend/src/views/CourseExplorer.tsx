@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import listPlugin from '@fullcalendar/list';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -17,28 +17,57 @@ interface Props {
 export function CourseExplorer({ events, isMobile = false, isTablet = false }: Props) {
     const [selectedSubject, setSelectedSubject] = useState('');
     const [subjectFilter, setSubjectFilter] = useState('');
+    const [selectedCalendarId, setSelectedCalendarId] = useState('');
     const [tab, setTab] = useState<'list' | 'calendar' | 'teachers'>('list');
     const [selectedEvent, setSelectedEvent] = useState<NormalizedEvent | null>(null);
     const lang = useLang();
     const t = useT();
 
+    const calendarOptions = useMemo(() => {
+        const map = new Map<string, string>();
+        events.forEach(ev => {
+            const id = (ev as any).calendarId as string | undefined;
+            const name = (ev as any).calendarName as string | undefined;
+            if (!id || !name) return;
+            if (!map.has(id)) map.set(id, name);
+        });
+        const locale = lang === 'fr' ? 'fr' : 'en';
+        return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1], locale));
+    }, [events, lang]);
+
+    useEffect(() => {
+        if (!selectedCalendarId) return;
+        const stillExists = calendarOptions.some(([id]) => id === selectedCalendarId);
+        if (!stillExists) setSelectedCalendarId('');
+    }, [calendarOptions, selectedCalendarId]);
+
+    const filteredEvents = useMemo(() => {
+        if (!selectedCalendarId) return events;
+        return events.filter(ev => (ev as any).calendarId === selectedCalendarId);
+    }, [events, selectedCalendarId]);
+
     // 1. Extract unique subjects and apply filter
     const subjects = useMemo(() => {
         const set = new Set<string>();
-        events.forEach(ev => {
+        filteredEvents.forEach(ev => {
             if (ev.subject && ev.subject.length > 2) set.add(ev.subject);
         });
         const all = Array.from(set).sort();
         if (!subjectFilter) return all;
         const term = subjectFilter.toLowerCase();
         return all.filter(s => s.toLowerCase().includes(term));
-    }, [events, subjectFilter]);
+    }, [filteredEvents, subjectFilter]);
+
+    useEffect(() => {
+        if (!selectedSubject) return;
+        if (!subjects.includes(selectedSubject)) setSelectedSubject('');
+    }, [subjects, selectedSubject]);
 
     // 2. Filter events for selected subject
     const courseEvents = useMemo(() => {
         if (!selectedSubject) return [];
 
-        const subjectEvents = events
+        const subjectEvents = filteredEvents
             .filter(ev => ev.subject === selectedSubject)
             .sort((a, b) => {
                 const aTs = (a as any).start_ts ?? 0;
@@ -79,7 +108,7 @@ export function CourseExplorer({ events, isMobile = false, isTablet = false }: P
                 const bTs = (b as any).start_ts ?? 0;
                 return aTs - bTs;
             });
-    }, [selectedSubject, events]);
+    }, [selectedSubject, filteredEvents]);
 
     const formatDate = (d?: Date) => {
         if (!d) return '—';
@@ -226,6 +255,28 @@ export function CourseExplorer({ events, isMobile = false, isTablet = false }: P
                         }}>
                             <span>📚</span> {t.subjects}
                         </h3>
+                        <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
+                            {t.calendar_filter_label}
+                        </label>
+                        <select
+                            value={selectedCalendarId}
+                            onChange={(e) => setSelectedCalendarId(e.target.value)}
+                            style={{
+                                width: '100%',
+                                padding: '0.45rem',
+                                marginBottom: '0.6rem',
+                                borderRadius: 'var(--radius)',
+                                border: '1px solid var(--border-color)',
+                                background: 'var(--card-bg)',
+                                color: 'var(--text-color)',
+                                fontSize: '0.8rem'
+                            }}
+                        >
+                            <option value="">{t.calendar_filter_all}</option>
+                            {calendarOptions.map(([id, name]) => (
+                                <option key={id} value={id}>{name}</option>
+                            ))}
+                        </select>
                         <input
                             type="text"
                             placeholder={`🔍 ${t.filter_subjects}`}
@@ -242,7 +293,7 @@ export function CourseExplorer({ events, isMobile = false, isTablet = false }: P
                             onChange={(e) => setSubjectFilter(e.target.value)}
                         />
                         <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
-                            {subjects.length} {subjects.length === 1 ? 'matiere' : 'matieres'}
+                            {subjects.length} {subjects.length === 1 ? t.subject_count_singular : t.subject_count_plural}
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
                             {subjects.map(s => {
@@ -279,10 +330,10 @@ export function CourseExplorer({ events, isMobile = false, isTablet = false }: P
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.45rem' }}>
                                 <button
                                     className="btn"
-                                    style={{ padding: '0.2rem 0.42rem', fontSize: '0.78rem' }}
+                                    style={{ padding: '0.3rem 0.7rem', fontSize: '0.78rem', fontWeight: 600 }}
                                     onClick={() => setSelectedSubject('')}
                                 >
-                                    ←
+                                    ← {t.back}
                                 </button>
                                 <h2 style={{
                                     margin: 0,
@@ -461,6 +512,28 @@ export function CourseExplorer({ events, isMobile = false, isTablet = false }: P
                 }}>
                     <span>📚</span> {t.subjects}
                 </h3>
+                <label style={{ display: 'block', fontSize: isTablet ? '0.7rem' : '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.3rem' }}>
+                    {t.calendar_filter_label}
+                </label>
+                <select
+                    value={selectedCalendarId}
+                    onChange={(e) => setSelectedCalendarId(e.target.value)}
+                    style={{
+                        width: '100%',
+                        padding: isTablet ? '0.5rem' : '0.65rem',
+                        marginBottom: isTablet ? '0.6rem' : '0.85rem',
+                        borderRadius: 'var(--radius)',
+                        border: '1px solid var(--border-color)',
+                        background: 'var(--card-bg)',
+                        color: 'var(--text-color)',
+                        fontSize: isTablet ? '0.78rem' : '0.85rem'
+                    }}
+                >
+                    <option value="">{t.calendar_filter_all}</option>
+                    {calendarOptions.map(([id, name]) => (
+                        <option key={id} value={id}>{name}</option>
+                    ))}
+                </select>
                 <input
                     type="text"
                     placeholder={`🔍 ${t.filter_subjects}`}
