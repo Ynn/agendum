@@ -65,10 +65,10 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false, on
         cm: 'CM',
         td: 'TD',
         tp: 'TP',
-        project: t.project,
-        reunion: t.reunion,
-        exam: t.exam,
-        other: t.other
+        project: isMobile ? t.project_short : t.project,
+        reunion: isMobile ? t.reunion_short : t.reunion,
+        exam: isMobile ? t.exam_short : t.exam,
+        other: isMobile ? t.other_short : t.other
     };
     const compactHead = isMobile ? { padding: '0.45rem 0.35rem', whiteSpace: 'nowrap' as const, minWidth: '5.5ch' } : {};
     const compactHeadWide = isMobile ? { ...compactHead, minWidth: '6.5ch' } : compactHead;

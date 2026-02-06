@@ -243,12 +243,18 @@ export function Agenda({
                     }
 
                     if (isMobile) {
+                        const locationLine = location
+                            ? `<div class="fc-event-location" style="font-size: 0.6rem; opacity: 0.8; line-height: 1.1; white-space: normal; word-break: break-word; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
+                                    ${location}
+                               </div>`
+                            : '';
                         return {
                             html: `
-                                <div class="fc-event-main-frame" style="padding: 1px 3px; height: 100%; display: flex; align-items: center; overflow: hidden;">
-                                    <div class="fc-event-title fc-sticky" style="font-weight: 600; font-size: 0.68rem; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                <div class="fc-event-main-frame" style="padding: 1px 3px; height: 100%; display: flex; flex-direction: column; gap: 1px; overflow: hidden;">
+                                    <div class="fc-event-title fc-sticky" style="font-weight: 600; font-size: 0.68rem; line-height: 1.15; white-space: normal; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
                                         ${title}
                                     </div>
+                                    ${locationLine}
                                 </div>
                             `
                         };
