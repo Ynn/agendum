@@ -95,6 +95,7 @@ export default function App() {
   const [isWasmReady, setIsWasmReady] = useState(false);
   const [calendars, setCalendars] = useState<Calendar[]>([]);
   const [view, setView] = useState<View>('agenda');
+  const [courseSubjectFocus, setCourseSubjectFocus] = useState('');
   const [mainCalendarId, setMainCalendarId] = useState<string | null>(null);
   const [lang, setLang] = useState<Lang>(() => {
     try {
@@ -140,6 +141,12 @@ export default function App() {
     if (typeof window === 'undefined') return false;
     return window.matchMedia('(max-width: 1024px)').matches;
   });
+
+  const handleCourseSubjectJump = (subject: string) => {
+    if (!subject) return;
+    setCourseSubjectFocus(subject);
+    setView('courses');
+  };
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Colors for new calendars
@@ -1150,13 +1157,22 @@ export default function App() {
             </div>
           )}
 
-          {view === 'courses' && <CourseExplorer events={courseEvents} isMobile={isMobile} isTablet={isTablet && !isMobile} />}
+          {view === 'courses' && (
+            <CourseExplorer
+              events={courseEvents}
+              isMobile={isMobile}
+              isTablet={isTablet && !isMobile}
+              initialSubject={courseSubjectFocus}
+              onInitialSubjectApplied={() => setCourseSubjectFocus('')}
+            />
+          )}
 
           {view === 'stats' && (
             <ServiceDashboard
               events={serviceEvents}
               selectedTeacher={selectedTeacher}
               isMobile={isMobile}
+              onSelectSubject={handleCourseSubjectJump}
             />
           )}
 

@@ -6,6 +6,7 @@ interface Props {
     events: NormalizedEvent[];
     selectedTeacher?: string;
     isMobile?: boolean;
+    onSelectSubject?: (subject: string) => void;
 }
 
 interface Stats {
@@ -26,7 +27,7 @@ interface TeacherData {
     grandTotal: number;
 }
 
-export function ServiceDashboard({ events, selectedTeacher, isMobile = false }: Props) {
+export function ServiceDashboard({ events, selectedTeacher, isMobile = false, onSelectSubject }: Props) {
     const t = useT();
     const lang = useLang();
     const showEmpty = false;
@@ -69,6 +70,9 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false }: 
         exam: t.exam,
         other: t.other
     };
+    const compactHead = isMobile ? { padding: '0.45rem 0.35rem', whiteSpace: 'nowrap' as const, minWidth: '5.5ch' } : {};
+    const compactHeadWide = isMobile ? { ...compactHead, minWidth: '6.5ch' } : compactHead;
+    const compactCell = isMobile ? { padding: '0.42rem 0.35rem' } : {};
 
     const baseEvents = useMemo(() => {
         if (!selectedTeacher) return events;
@@ -231,18 +235,25 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false }: 
                     borderRadius: 'var(--radius)',
                     boxShadow: 'var(--shadow-xs)'
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                        <span style={{ fontSize: '1rem' }}>⏱️</span>
-                        <div>
-                            <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.total_core_label}</div>
-                            <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-color)' }}>{summary.totalCore.toFixed(1)}h</div>
+                    <div style={{
+                        display: 'flex',
+                        gap: isMobile ? '0.6rem' : '0.35rem',
+                        flexWrap: 'wrap',
+                        width: isMobile ? '100%' : 'auto'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                            <span style={{ fontSize: '1rem' }}>⏱️</span>
+                            <div>
+                                <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.total_core_label}</div>
+                                <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-color)' }}>{summary.totalCore.toFixed(1)}h</div>
+                            </div>
                         </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                        <span style={{ fontSize: '1rem' }}>∑</span>
-                        <div>
-                            <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.total_with_project_label}</div>
-                            <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-color)' }}>{summary.totalTeaching.toFixed(1)}h</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                            <span style={{ fontSize: '1rem' }}>∑</span>
+                            <div>
+                                <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.total_with_project_label}</div>
+                                <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-color)' }}>{summary.totalTeaching.toFixed(1)}h</div>
+                            </div>
                         </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
@@ -301,6 +312,20 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false }: 
                     const totals = teacher.totalsAll;
                     const totalCore = totals.cm + totals.td + totals.tp;
                     const totalTeaching = totalCore + totals.project;
+                    const longestSubjectLen = teacher.subjectList.length > 0
+                        ? Math.max(8, ...teacher.subjectList.map(row => row.name.length))
+                        : 12;
+                    const subjectMaxCh = isMobile ? Math.max(12, Math.round(longestSubjectLen * 0.75)) : null;
+                    const subjectColWidth = isMobile ? `${subjectMaxCh}ch` : undefined;
+                    const numericCols = 1
+                        + (cols.cm ? 1 : 0)
+                        + (cols.td ? 1 : 0)
+                        + (cols.tp ? 1 : 0)
+                        + (cols.project ? 1 : 0)
+                        + (cols.exam ? 1 : 0)
+                        + (cols.reunion ? 1 : 0)
+                        + (cols.other ? 1 : 0);
+                    const tableMinWidth = isMobile ? `calc(${subjectColWidth} + ${numericCols * 6.5}ch)` : '100%';
                     return (
                         <section key={teacher.name} className="card" style={{ padding: '0', marginBottom: '2rem', overflow: 'hidden' }}>
                             <div style={{ background: 'var(--bg-secondary)', padding: isMobile ? '0.55rem 0.7rem' : '1rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -320,18 +345,25 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false }: 
                                     borderRadius: 'var(--radius)',
                                     boxShadow: 'var(--shadow-xs)'
                                 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                        <span style={{ fontSize: '1rem' }}>⏱️</span>
-                                        <div>
-                                            <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.total_core_label}</div>
-                                            <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-color)' }}>{totalCore.toFixed(1)}h</div>
+                                    <div style={{
+                                        display: 'flex',
+                                        gap: isMobile ? '0.6rem' : '0.35rem',
+                                        flexWrap: 'wrap',
+                                        width: isMobile ? '100%' : 'auto'
+                                    }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                            <span style={{ fontSize: '1rem' }}>⏱️</span>
+                                            <div>
+                                                <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.total_core_label}</div>
+                                                <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-color)' }}>{totalCore.toFixed(1)}h</div>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                        <span style={{ fontSize: '1rem' }}>∑</span>
-                                        <div>
-                                            <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.total_with_project_label}</div>
-                                            <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-color)' }}>{totalTeaching.toFixed(1)}h</div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                            <span style={{ fontSize: '1rem' }}>∑</span>
+                                            <div>
+                                                <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.total_with_project_label}</div>
+                                                <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-color)' }}>{totalTeaching.toFixed(1)}h</div>
+                                            </div>
                                         </div>
                                     </div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
@@ -381,34 +413,74 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false }: 
                             </div>
 
                             <div className="table-container service-table-container">
-                                <table style={{ width: '100%' }}>
+                                <table style={{ width: '100%', tableLayout: isMobile ? 'fixed' : 'auto', minWidth: tableMinWidth }}>
                                     <thead>
                                         <tr style={{ textAlign: 'left', background: 'var(--card-bg)', fontSize: isMobile ? '0.66rem' : undefined }}>
-                                            <th style={{ padding: isMobile ? '0.45rem 0.6rem' : '1rem 1.5rem' }}>{t.subject}</th>
-                                            {cols.cm && <th style={{ textAlign: 'right' }}>CM</th>}
-                                            {cols.td && <th style={{ textAlign: 'right' }}>TD</th>}
-                                            {cols.tp && <th style={{ textAlign: 'right' }}>TP</th>}
-                                            {cols.project && <th style={{ textAlign: 'right' }}>{t.project}</th>}
-                                            <th style={{ textAlign: 'right', padding: isMobile ? '0.45rem 0.6rem' : '1rem 1.5rem', background: 'var(--bg-secondary)' }}>{t.total}</th>
-                                            {cols.exam && <th style={{ textAlign: 'right' }}>{t.exam}</th>}
-                                            {cols.reunion && <th style={{ textAlign: 'right' }}>{t.reunion}</th>}
-                                            {cols.other && <th style={{ textAlign: 'right' }}>{t.other}</th>}
+                                            <th style={{
+                                                padding: isMobile ? '0.45rem 0.6rem' : '1rem 1.5rem',
+                                                width: subjectColWidth,
+                                                maxWidth: subjectColWidth
+                                            }}>
+                                                {isMobile ? t.subject_short : t.subject}
+                                            </th>
+                                            {cols.cm && <th style={{ textAlign: 'right', ...compactHead }}>CM</th>}
+                                            {cols.td && <th style={{ textAlign: 'right', ...compactHead }}>TD</th>}
+                                            {cols.tp && <th style={{ textAlign: 'right', ...compactHead }}>TP</th>}
+                                            {cols.project && <th style={{ textAlign: 'right', ...compactHead }}>{isMobile ? t.project_short : t.project}</th>}
+                                            <th style={{ textAlign: 'right', padding: isMobile ? '0.45rem 0.6rem' : '1rem 1.5rem', paddingLeft: isMobile ? '0.35rem' : undefined, background: 'var(--bg-secondary)' }}>{isMobile ? t.total_short : t.total}</th>
+                                            {cols.exam && <th style={{ textAlign: 'right', ...compactHeadWide }}>{isMobile ? t.exam_short : t.exam}</th>}
+                                            {cols.reunion && <th style={{ textAlign: 'right', ...compactHeadWide }}>{t.reunion}</th>}
+                                            {cols.other && <th style={{ textAlign: 'right', ...compactHeadWide }}>{isMobile ? t.other_short : t.other}</th>}
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {teacher.subjectList.map(row => (
                                             <tr key={row.name} style={{ borderTop: '1px solid var(--bg-secondary)', fontSize: isMobile ? '0.68rem' : undefined }}>
-                                                <td style={{ padding: isMobile ? '0.42rem 0.6rem' : '0.8rem 1.5rem', fontWeight: 500 }}>{row.name}</td>
-                                                {cols.cm && <td style={{ textAlign: 'right' }}>{row.cm > 0 ? row.cm.toFixed(1) : '-'}</td>}
-                                                {cols.td && <td style={{ textAlign: 'right' }}>{row.td > 0 ? row.td.toFixed(1) : '-'}</td>}
-                                                {cols.tp && <td style={{ textAlign: 'right' }}>{row.tp > 0 ? row.tp.toFixed(1) : '-'}</td>}
-                                                {cols.project && <td style={{ textAlign: 'right' }}>{row.project > 0 ? row.project.toFixed(1) : '-'}</td>}
-                                                <td style={{ textAlign: 'right', padding: isMobile ? '0.42rem 0.6rem' : '0.8rem 1.5rem', fontWeight: 700, background: 'var(--bg-secondary)' }}>
+                                                <td style={{
+                                                    padding: isMobile ? '0.42rem 0.6rem' : '0.8rem 1.5rem',
+                                                    fontWeight: 500,
+                                                    width: subjectColWidth,
+                                                    maxWidth: subjectColWidth,
+                                                    whiteSpace: isMobile ? 'nowrap' : undefined,
+                                                    overflow: isMobile ? 'hidden' : undefined,
+                                                    textOverflow: isMobile ? 'ellipsis' : undefined
+                                                }}>
+                                                    {onSelectSubject ? (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => onSelectSubject(row.name)}
+                                                            style={{
+                                                                background: 'none',
+                                                                border: 'none',
+                                                                padding: 0,
+                                                            margin: 0,
+                                                            cursor: 'pointer',
+                                                            font: 'inherit',
+                                                            color: 'var(--primary-color)',
+                                                                textAlign: 'left',
+                                                                display: 'block',
+                                                                width: '100%',
+                                                                whiteSpace: 'inherit',
+                                                                overflow: 'hidden',
+                                                                textOverflow: 'ellipsis'
+                                                            }}
+                                                        >
+                                                            {row.name}
+                                                        </button>
+                                                    ) : (
+                                                        row.name
+                                                    )}
+                                                </td>
+                                                {cols.cm && <td style={{ textAlign: 'right', ...compactCell }}>{row.cm > 0 ? row.cm.toFixed(1) : '-'}</td>}
+                                                {cols.td && <td style={{ textAlign: 'right', ...compactCell }}>{row.td > 0 ? row.td.toFixed(1) : '-'}</td>}
+                                                {cols.tp && <td style={{ textAlign: 'right', ...compactCell }}>{row.tp > 0 ? row.tp.toFixed(1) : '-'}</td>}
+                                                {cols.project && <td style={{ textAlign: 'right', ...compactCell }}>{row.project > 0 ? row.project.toFixed(1) : '-'}</td>}
+                                                <td style={{ textAlign: 'right', padding: isMobile ? '0.42rem 0.6rem' : '0.8rem 1.5rem', paddingLeft: isMobile ? '0.35rem' : undefined, fontWeight: 700, background: 'var(--bg-secondary)' }}>
                                                     {row.filteredTotal.toFixed(1)}
                                                 </td>
-                                                {cols.exam && <td style={{ textAlign: 'right' }}>{row.exam > 0 ? row.exam.toFixed(1) : '-'}</td>}
-                                                {cols.reunion && <td style={{ textAlign: 'right' }}>{row.reunion > 0 ? row.reunion.toFixed(1) : '-'}</td>}
-                                                {cols.other && <td style={{ textAlign: 'right' }}>{row.other > 0 ? row.other.toFixed(1) : '-'}</td>}
+                                                {cols.exam && <td style={{ textAlign: 'right', ...compactCell }}>{row.exam > 0 ? row.exam.toFixed(1) : '-'}</td>}
+                                                {cols.reunion && <td style={{ textAlign: 'right', ...compactCell }}>{row.reunion > 0 ? row.reunion.toFixed(1) : '-'}</td>}
+                                                {cols.other && <td style={{ textAlign: 'right', ...compactCell }}>{row.other > 0 ? row.other.toFixed(1) : '-'}</td>}
                                             </tr>
                                         ))}
                                     </tbody>

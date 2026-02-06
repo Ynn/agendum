@@ -12,10 +12,18 @@ interface Props {
     events: NormalizedEvent[];
     isMobile?: boolean;
     isTablet?: boolean;
+    initialSubject?: string;
+    onInitialSubjectApplied?: () => void;
 }
 
-export function CourseExplorer({ events, isMobile = false, isTablet = false }: Props) {
-    const [selectedSubject, setSelectedSubject] = useState('');
+export function CourseExplorer({
+    events,
+    isMobile = false,
+    isTablet = false,
+    initialSubject,
+    onInitialSubjectApplied
+}: Props) {
+    const [selectedSubject, setSelectedSubject] = useState(initialSubject ?? '');
     const [subjectFilter, setSubjectFilter] = useState('');
     const [selectedCalendarId, setSelectedCalendarId] = useState('');
     const [tab, setTab] = useState<'list' | 'calendar' | 'teachers'>('list');
@@ -40,6 +48,14 @@ export function CourseExplorer({ events, isMobile = false, isTablet = false }: P
         const stillExists = calendarOptions.some(([id]) => id === selectedCalendarId);
         if (!stillExists) setSelectedCalendarId('');
     }, [calendarOptions, selectedCalendarId]);
+
+    useEffect(() => {
+        if (!initialSubject) return;
+        setSelectedSubject(initialSubject);
+        setSelectedCalendarId('');
+        setTab('list');
+        onInitialSubjectApplied?.();
+    }, [initialSubject, onInitialSubjectApplied]);
 
     const filteredEvents = useMemo(() => {
         if (!selectedCalendarId) return events;
