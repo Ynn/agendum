@@ -30,6 +30,24 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false }: 
     const lang = useLang();
     const showEmpty = false;
 
+    const splitTeacherNames = (value?: string) => {
+        if (!value) return [];
+        return value
+            .split(',')
+            .map(v => v.trim())
+            .filter(Boolean);
+    };
+
+    const isUnknownTeacherToken = (value: string) => {
+        const trimmed = value.trim();
+        if (!trimmed) return true;
+        if (trimmed === '—') return true;
+        const lower = trimmed.toLowerCase();
+        return lower === 'unknown teacher' || lower === t.unknown_teacher.toLowerCase();
+    };
+
+    const unknownTeacherLabel = selectedTeacher ? '—' : t.unknown_teacher;
+
     // Column Viz Toggles
     const [cols, setCols] = useState({
         cm: true,
@@ -46,9 +64,12 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false }: 
         const target = selectedTeacher.toLowerCase();
         return events.filter(ev => {
             const teacherStr = ((ev as any).extractedTeacher || '').toLowerCase();
-            return teacherStr.split(',').map((t: string) => t.trim()).includes(target);
+            const teacherTokens = splitTeacherNames(teacherStr);
+            const matchesSelected = teacherTokens.some(t => t.toLowerCase() === target);
+            const isUnknown = teacherTokens.length === 0 || teacherTokens.every(isUnknownTeacherToken);
+            return matchesSelected || isUnknown;
         });
-    }, [events, selectedTeacher]);
+    }, [events, selectedTeacher, t]);
 
     const summary = useMemo(() => {
         const totals = { cm: 0, td: 0, tp: 0, reunion: 0, exam: 0, other: 0 };
@@ -78,11 +99,20 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false }: 
             if ((ev as any).is_duplicate) return;
 
             const teacherStr = ((ev as any).extractedTeacher || '').trim();
-            const teacherNames = selectedTeacher
-                ? [selectedTeacher]
-                : (teacherStr
-                    ? teacherStr.split(',').map((t: string) => t.trim()).filter(Boolean)
-                    : [t.unknown_teacher]);
+            const teacherTokens = splitTeacherNames(teacherStr);
+            const matchesSelected = selectedTeacher
+                ? teacherTokens.some(name => name.toLowerCase() === selectedTeacher.toLowerCase())
+                : false;
+            const isUnknown = teacherTokens.length === 0 || teacherTokens.every(isUnknownTeacherToken);
+
+            let teacherNames: string[] = [];
+            if (selectedTeacher) {
+                if (matchesSelected) teacherNames = [selectedTeacher];
+                else if (isUnknown) teacherNames = [unknownTeacherLabel];
+                else return;
+            } else {
+                teacherNames = (!isUnknown && teacherTokens.length > 0) ? teacherTokens : [unknownTeacherLabel];
+            }
 
             teacherNames.forEach((teacherName: string) => {
                 if (!teachers.has(teacherName)) {
@@ -116,23 +146,41 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false }: 
         return Array.from(teachers.values())
             .map(t => {
                 let tGrandTotal = 0;
+                const totalsAll = { cm: 0, td: 0, tp: 0, reunion: 0, exam: 0, other: 0 };
                 const subjectList = Array.from(t.subjects.entries()).map(([name, s]) => {
-                const filteredTotal = s.cm + s.td + s.tp;
-                tGrandTotal += filteredTotal;
-                return { name, ...s, filteredTotal };
-            }).filter(row => {
-                if (showEmpty) return true;
-                const hasCore = row.cm > 0 || row.td > 0 || row.tp > 0;
-                const hasExtras = (cols.exam && row.exam > 0) || (cols.reunion && row.reunion > 0) || (cols.other && row.other > 0);
-                return hasCore || hasExtras;
-            }).sort((a, b) => b.filteredTotal - a.filteredTotal);
+                    totalsAll.cm += s.cm;
+                    totalsAll.td += s.td;
+                    totalsAll.tp += s.tp;
+                    totalsAll.reunion += s.reunion;
+                    totalsAll.exam += s.exam;
+                    totalsAll.other += s.other;
+                    const filteredTotal = s.cm + s.td + s.tp;
+                    tGrandTotal += filteredTotal;
+                    return { name, ...s, filteredTotal };
+                }).filter(row => {
+                    if (showEmpty) return true;
+                    const hasCore = row.cm > 0 || row.td > 0 || row.tp > 0;
+                    const hasExtras = (cols.exam && row.exam > 0) || (cols.reunion && row.reunion > 0) || (cols.other && row.other > 0);
+                    return hasCore || hasExtras;
+                }).sort((a, b) => b.filteredTotal - a.filteredTotal);
 
-                return { ...t, subjectList, grandTotal: tGrandTotal };
+                return { ...t, subjectList, grandTotal: tGrandTotal, totalsAll };
             })
             // Hide teacher sections when no visible rows after column filtering
             .filter(t => t.subjectList.length > 0)
-            .sort((a, b) => b.grandTotal - a.grandTotal);
-    }, [baseEvents, cols, showEmpty, t]);
+            .sort((a, b) => {
+                if (selectedTeacher) {
+                    const aKey = a.name.toLowerCase();
+                    const bKey = b.name.toLowerCase();
+                    const selectedKey = selectedTeacher.toLowerCase();
+                    if (aKey === selectedKey && bKey !== selectedKey) return -1;
+                    if (bKey === selectedKey && aKey !== selectedKey) return 1;
+                    if (a.name === unknownTeacherLabel && b.name !== unknownTeacherLabel) return -1;
+                    if (b.name === unknownTeacherLabel && a.name !== unknownTeacherLabel) return 1;
+                }
+                return b.grandTotal - a.grandTotal;
+            });
+    }, [baseEvents, cols, showEmpty, t, selectedTeacher]);
 
     return (
         <div className="service-dashboard fade-in page-scroll" style={{ height: '100%', minHeight: 0, overflowY: 'auto', paddingRight: isMobile ? '0.15rem' : '0.25rem' }}>
@@ -155,6 +203,9 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false }: 
                 </div>
             </div>
 
+            <div style={{ fontSize: isMobile ? '0.68rem' : '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0.1rem 0 0.35rem 0.15rem', fontWeight: 600 }}>
+                {lang === 'fr' ? 'Total de tous les services affichés' : 'Total of all displayed services'}
+            </div>
             <div className="card" style={{ padding: isMobile ? '0.4rem 0.5rem' : '0.55rem 0.75rem', marginBottom: '0.6rem' }}>
                 <div style={{
                     display: 'flex',
@@ -217,49 +268,109 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false }: 
                     {t.no_events_service}
                 </div>
             ) : (
-                teacherStats.map(teacher => (
-                    <section key={teacher.name} className="card" style={{ padding: '0', marginBottom: '2rem', overflow: 'hidden' }}>
-                        <div style={{ background: 'var(--bg-secondary)', padding: isMobile ? '0.55rem 0.7rem' : '1rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <h2 style={{ margin: 0, fontSize: isMobile ? '0.9rem' : '1.25rem' }}>{teacher.name}</h2>
-                            <div style={{ fontSize: isMobile ? '0.88rem' : '1.2rem', fontWeight: 700, color: 'var(--primary-color)' }}>
-                                {teacher.grandTotal.toFixed(1)} h
+                teacherStats.map(teacher => {
+                    const totals = teacher.totalsAll;
+                    const totalTeaching = totals.cm + totals.td + totals.tp;
+                    return (
+                        <section key={teacher.name} className="card" style={{ padding: '0', marginBottom: '2rem', overflow: 'hidden' }}>
+                            <div style={{ background: 'var(--bg-secondary)', padding: isMobile ? '0.55rem 0.7rem' : '1rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <h2 style={{ margin: 0, fontSize: isMobile ? '0.9rem' : '1.25rem' }}>{teacher.name}</h2>
+                                <div style={{ fontSize: isMobile ? '0.88rem' : '1.2rem', fontWeight: 700, color: 'var(--primary-color)' }}>
+                                    {teacher.grandTotal.toFixed(1)} h
+                                </div>
                             </div>
-                        </div>
 
-                        <div className="table-container service-table-container">
-                            <table style={{ width: '100%' }}>
-                                <thead>
-                                    <tr style={{ textAlign: 'left', background: 'var(--card-bg)', fontSize: isMobile ? '0.66rem' : undefined }}>
-                                        <th style={{ padding: isMobile ? '0.45rem 0.6rem' : '1rem 1.5rem' }}>{t.subject}</th>
-                                        {cols.cm && <th style={{ textAlign: 'right' }}>CM</th>}
-                                        {cols.td && <th style={{ textAlign: 'right' }}>TD</th>}
-                                        {cols.tp && <th style={{ textAlign: 'right' }}>TP</th>}
-                                        <th style={{ textAlign: 'right', padding: isMobile ? '0.45rem 0.6rem' : '1rem 1.5rem', background: 'var(--bg-secondary)' }}>{t.total}</th>
-                                        {cols.exam && <th style={{ textAlign: 'right' }}>{t.exam}</th>}
-                                        {cols.reunion && <th style={{ textAlign: 'right' }}>{t.reunion}</th>}
-                                        {cols.other && <th style={{ textAlign: 'right' }}>{t.other}</th>}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {teacher.subjectList.map(row => (
-                                        <tr key={row.name} style={{ borderTop: '1px solid var(--bg-secondary)', fontSize: isMobile ? '0.68rem' : undefined }}>
-                                            <td style={{ padding: isMobile ? '0.42rem 0.6rem' : '0.8rem 1.5rem', fontWeight: 500 }}>{row.name}</td>
-                                            {cols.cm && <td style={{ textAlign: 'right' }}>{row.cm > 0 ? row.cm.toFixed(1) : '-'}</td>}
-                                            {cols.td && <td style={{ textAlign: 'right' }}>{row.td > 0 ? row.td.toFixed(1) : '-'}</td>}
-                                            {cols.tp && <td style={{ textAlign: 'right' }}>{row.tp > 0 ? row.tp.toFixed(1) : '-'}</td>}
-                                            <td style={{ textAlign: 'right', padding: isMobile ? '0.42rem 0.6rem' : '0.8rem 1.5rem', fontWeight: 700, background: 'var(--bg-secondary)' }}>
-                                                {row.filteredTotal.toFixed(1)}
-                                            </td>
-                                            {cols.exam && <td style={{ textAlign: 'right' }}>{row.exam > 0 ? row.exam.toFixed(1) : '-'}</td>}
-                                            {cols.reunion && <td style={{ textAlign: 'right' }}>{row.reunion > 0 ? row.reunion.toFixed(1) : '-'}</td>}
-                                            {cols.other && <td style={{ textAlign: 'right' }}>{row.other > 0 ? row.other.toFixed(1) : '-'}</td>}
+                            <div style={{ padding: isMobile ? '0.45rem 0.55rem' : '0.7rem 1.2rem', borderBottom: '1px solid var(--border-color)', background: 'var(--card-bg)' }}>
+                                <div style={{
+                                    display: 'flex',
+                                    gap: isMobile ? '0.6rem' : '1.1rem',
+                                    flexWrap: 'wrap',
+                                    padding: isMobile ? '0.35rem 0.4rem' : '0.45rem 0.6rem',
+                                    background: 'var(--card-bg)',
+                                    borderRadius: 'var(--radius)',
+                                    boxShadow: 'var(--shadow-xs)'
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                        <span style={{ fontSize: '1rem' }}>⏱️</span>
+                                        <div>
+                                            <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.total_label}</div>
+                                            <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-color)' }}>{totalTeaching.toFixed(1)}h</div>
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                        <span style={{ fontSize: '1rem' }}>📖</span>
+                                        <div>
+                                            <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>CM</div>
+                                            <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#1e40af' }}>{totals.cm.toFixed(1)}h</div>
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                        <span style={{ fontSize: '1rem' }}>✏️</span>
+                                        <div>
+                                            <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TD</div>
+                                            <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#166534' }}>{totals.td.toFixed(1)}h</div>
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                        <span style={{ fontSize: '1rem' }}>🔬</span>
+                                        <div>
+                                            <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TP</div>
+                                            <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#374151' }}>{totals.tp.toFixed(1)}h</div>
+                                        </div>
+                                    </div>
+                                    <div style={{
+                                        marginLeft: 'auto',
+                                        minWidth: isMobile ? '100%' : '260px',
+                                        color: 'var(--text-muted)',
+                                        fontSize: isMobile ? '0.68rem' : '0.74rem',
+                                        borderLeft: isMobile ? '0' : '1px solid var(--border-color)',
+                                        paddingLeft: isMobile ? '0' : '0.8rem'
+                                    }}>
+                                        <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{lang === 'fr' ? 'Non compté' : 'Not counted'}</div>
+                                        <div style={{ display: 'flex', gap: '0.7rem', flexWrap: 'wrap' }}>
+                                            <div>🧪 {t.exam}: {totals.exam.toFixed(1)}h</div>
+                                            <div>🗓️ {t.reunion}: {totals.reunion.toFixed(1)}h</div>
+                                            <div>📌 {t.other}: {totals.other.toFixed(1)}h</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="table-container service-table-container">
+                                <table style={{ width: '100%' }}>
+                                    <thead>
+                                        <tr style={{ textAlign: 'left', background: 'var(--card-bg)', fontSize: isMobile ? '0.66rem' : undefined }}>
+                                            <th style={{ padding: isMobile ? '0.45rem 0.6rem' : '1rem 1.5rem' }}>{t.subject}</th>
+                                            {cols.cm && <th style={{ textAlign: 'right' }}>CM</th>}
+                                            {cols.td && <th style={{ textAlign: 'right' }}>TD</th>}
+                                            {cols.tp && <th style={{ textAlign: 'right' }}>TP</th>}
+                                            <th style={{ textAlign: 'right', padding: isMobile ? '0.45rem 0.6rem' : '1rem 1.5rem', background: 'var(--bg-secondary)' }}>{t.total}</th>
+                                            {cols.exam && <th style={{ textAlign: 'right' }}>{t.exam}</th>}
+                                            {cols.reunion && <th style={{ textAlign: 'right' }}>{t.reunion}</th>}
+                                            {cols.other && <th style={{ textAlign: 'right' }}>{t.other}</th>}
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </section>
-                ))
+                                    </thead>
+                                    <tbody>
+                                        {teacher.subjectList.map(row => (
+                                            <tr key={row.name} style={{ borderTop: '1px solid var(--bg-secondary)', fontSize: isMobile ? '0.68rem' : undefined }}>
+                                                <td style={{ padding: isMobile ? '0.42rem 0.6rem' : '0.8rem 1.5rem', fontWeight: 500 }}>{row.name}</td>
+                                                {cols.cm && <td style={{ textAlign: 'right' }}>{row.cm > 0 ? row.cm.toFixed(1) : '-'}</td>}
+                                                {cols.td && <td style={{ textAlign: 'right' }}>{row.td > 0 ? row.td.toFixed(1) : '-'}</td>}
+                                                {cols.tp && <td style={{ textAlign: 'right' }}>{row.tp > 0 ? row.tp.toFixed(1) : '-'}</td>}
+                                                <td style={{ textAlign: 'right', padding: isMobile ? '0.42rem 0.6rem' : '0.8rem 1.5rem', fontWeight: 700, background: 'var(--bg-secondary)' }}>
+                                                    {row.filteredTotal.toFixed(1)}
+                                                </td>
+                                                {cols.exam && <td style={{ textAlign: 'right' }}>{row.exam > 0 ? row.exam.toFixed(1) : '-'}</td>}
+                                                {cols.reunion && <td style={{ textAlign: 'right' }}>{row.reunion > 0 ? row.reunion.toFixed(1) : '-'}</td>}
+                                                {cols.other && <td style={{ textAlign: 'right' }}>{row.other > 0 ? row.other.toFixed(1) : '-'}</td>}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+                    );
+                })
             )}
 
             <p style={{ textAlign: 'right', color: 'var(--text-muted)', fontSize: '0.85rem', padding: '0 1rem' }}>
