@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import listPlugin from '@fullcalendar/list';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -12,24 +12,26 @@ interface Props {
     events: NormalizedEvent[];
     isMobile?: boolean;
     isTablet?: boolean;
-    initialSubject?: string;
-    onInitialSubjectApplied?: () => void;
+    selectedSubject: string;
+    onSubjectChange: (subject: string) => void;
 }
 
 export function CourseExplorer({
     events,
     isMobile = false,
     isTablet = false,
-    initialSubject,
-    onInitialSubjectApplied
+    selectedSubject,
+    onSubjectChange
 }: Props) {
-    const [selectedSubject, setSelectedSubject] = useState(initialSubject ?? '');
     const [subjectFilter, setSubjectFilter] = useState('');
     const [selectedCalendarId, setSelectedCalendarId] = useState('');
     const [tab, setTab] = useState<'list' | 'calendar' | 'teachers'>('list');
+    const [mobileCalendarView, setMobileCalendarView] = useState<'timeGridWeek' | 'dayGridMonth' | 'listWeek'>('timeGridWeek');
     const [selectedEvent, setSelectedEvent] = useState<NormalizedEvent | null>(null);
     const lang = useLang();
     const t = useT();
+    const mobileCalendarRef = useRef<FullCalendar | null>(null);
+    const mobileSwipeRef = useRef<{ x: number; y: number } | null>(null);
 
     const calendarOptions = useMemo(() => {
         const map = new Map<string, string>();
@@ -48,14 +50,6 @@ export function CourseExplorer({
         const stillExists = calendarOptions.some(([id]) => id === selectedCalendarId);
         if (!stillExists) setSelectedCalendarId('');
     }, [calendarOptions, selectedCalendarId]);
-
-    useEffect(() => {
-        if (!initialSubject) return;
-        setSelectedSubject(initialSubject);
-        setSelectedCalendarId('');
-        setTab('list');
-        onInitialSubjectApplied?.();
-    }, [initialSubject, onInitialSubjectApplied]);
 
     const filteredEvents = useMemo(() => {
         if (!selectedCalendarId) return events;
@@ -76,8 +70,13 @@ export function CourseExplorer({
 
     useEffect(() => {
         if (!selectedSubject) return;
-        if (!subjects.includes(selectedSubject)) setSelectedSubject('');
-    }, [subjects, selectedSubject]);
+        if (!subjects.includes(selectedSubject)) onSubjectChange('');
+    }, [subjects, selectedSubject, onSubjectChange]);
+
+    useEffect(() => {
+        if (!selectedSubject) return;
+        setTab('list');
+    }, [selectedSubject]);
 
     // 2. Filter events for selected subject
     const courseEvents = useMemo(() => {
@@ -148,6 +147,15 @@ export function CourseExplorer({
     };
 
     const rawEventLabel = lang === 'fr' ? "Voir l'événement brut" : 'View raw event';
+    const calendarViewOptions = [
+        { value: 'timeGridWeek', label: t.calendar_view_week },
+        { value: 'dayGridMonth', label: t.calendar_view_month },
+        { value: 'listWeek', label: t.calendar_view_planning }
+    ];
+    const pad2 = (n: number) => n.toString().padStart(2, '0');
+    const dayLetters = lang === 'fr'
+        ? ['D', 'L', 'M', 'M', 'J', 'V', 'S']
+        : ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
     const renderEventModal = () => {
         if (!selectedEvent) return null;
@@ -319,7 +327,7 @@ export function CourseExplorer({
                                         key={s}
                                         className="btn"
                                         onClick={() => {
-                                            setSelectedSubject(s);
+                                            onSubjectChange(s);
                                             setTab('list');
                                         }}
                                         style={{
@@ -347,7 +355,7 @@ export function CourseExplorer({
                                 <button
                                     className="btn"
                                     style={{ padding: '0.3rem 0.7rem', fontSize: '0.78rem', fontWeight: 600 }}
-                                    onClick={() => setSelectedSubject('')}
+                                    onClick={() => onSubjectChange('')}
                                 >
                                     ← {t.back}
                                 </button>
@@ -465,20 +473,71 @@ export function CourseExplorer({
                             )}
 
                             {tab === 'calendar' && (
-                                <div style={{ height: '66vh', minHeight: 380 }}>
+                                <div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.5rem' }}>
+                                        <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                                            {t.calendar_view_label}
+                                        </label>
+                                        <select
+                                            value={mobileCalendarView}
+                                            onChange={(e) => setMobileCalendarView(e.target.value as typeof mobileCalendarView)}
+                                            style={{
+                                                padding: '0.35rem 0.5rem',
+                                                borderRadius: 'var(--radius)',
+                                                border: '1px solid var(--border-color)',
+                                                background: 'var(--card-bg)',
+                                                color: 'var(--text-color)',
+                                                fontSize: '0.75rem'
+                                            }}
+                                        >
+                                            {calendarViewOptions.map(opt => (
+                                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div
+                                        style={{ height: '66vh', minHeight: 380 }}
+                                        onTouchStart={(e) => {
+                                            if (!isMobile || e.touches.length !== 1) return;
+                                            const t = e.touches[0];
+                                            mobileSwipeRef.current = { x: t.clientX, y: t.clientY };
+                                        }}
+                                        onTouchEnd={(e) => {
+                                            if (!isMobile || !mobileSwipeRef.current || e.changedTouches.length !== 1) return;
+                                            const t = e.changedTouches[0];
+                                            const dx = t.clientX - mobileSwipeRef.current.x;
+                                            const dy = t.clientY - mobileSwipeRef.current.y;
+                                            mobileSwipeRef.current = null;
+                                            if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+                                            const api = mobileCalendarRef.current?.getApi();
+                                            if (!api) return;
+                                            if (dx < 0) api.next();
+                                            else api.prev();
+                                        }}
+                                    >
                                     <FullCalendar
+                                        ref={mobileCalendarRef}
                                         plugins={[dayGridPlugin, timeGridPlugin, listPlugin]}
-                                        initialView="listWeek"
+                                        initialView={mobileCalendarView}
+                                        key={mobileCalendarView}
+                                        stickyHeaderDates={false}
                                         headerToolbar={{
                                             left: 'prev,next',
                                             center: 'title',
-                                            right: 'dayGridMonth,listWeek'
+                                            right: ''
                                         }}
                                         events={calendarEvents}
                                         locale={lang === 'fr' ? frLocale : undefined}
                                         firstDay={1}
+                                        dayHeaderContent={(arg) => {
+                                            if (arg.view.type.includes('list')) return undefined;
+                                            const letter = dayLetters[arg.date.getDay()] || '';
+                                            const dayNum = pad2(arg.date.getDate());
+                                            return `${letter} ${dayNum}`;
+                                        }}
                                         height="100%"
                                     />
+                                    </div>
                                 </div>
                             )}
 
@@ -599,7 +658,7 @@ export function CourseExplorer({
                         return (
                             <div
                                 key={s}
-                                onClick={() => setSelectedSubject(s)}
+                                onClick={() => onSubjectChange(s)}
                                 style={{
                                     padding: isTablet ? '0.55rem' : '0.75rem',
                                     cursor: 'pointer',
@@ -856,6 +915,7 @@ export function CourseExplorer({
                                     <FullCalendar
                                         plugins={[dayGridPlugin, timeGridPlugin, listPlugin]}
                                         initialView="listWeek"
+                                        stickyHeaderDates={false}
                                         headerToolbar={{
                                             left: 'prev,next today',
                                             center: 'title',
@@ -864,6 +924,12 @@ export function CourseExplorer({
                                         events={calendarEvents}
                                         locale={lang === 'fr' ? frLocale : undefined}
                                         firstDay={1}
+                                        dayHeaderContent={(arg) => {
+                                            if (arg.view.type.includes('list')) return undefined;
+                                            const letter = dayLetters[arg.date.getDay()] || '';
+                                            const dayNum = pad2(arg.date.getDate());
+                                            return `${letter} ${dayNum}`;
+                                        }}
                                         height="100%"
                                         expandRows={true}
                                     />

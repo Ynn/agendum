@@ -20,6 +20,7 @@ export function Agenda({
     const lang = useLang();
     const t = useT();
     const calendarRef = useRef<FullCalendar | null>(null);
+    const swipeRef = useRef<{ x: number; y: number } | null>(null);
     const [currentView, setCurrentView] = useState('timeGridWeek');
     const [weekValue, setWeekValue] = useState('');
     const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
@@ -86,7 +87,7 @@ export function Agenda({
         const d = weekToDate(weekValue);
         return d ? toDateInput(d) : '';
     }, [weekValue]);
-    const mobileDayLetters = lang === 'fr'
+    const dayLetters = lang === 'fr'
         ? ['D', 'L', 'M', 'M', 'J', 'V', 'S']
         : ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
@@ -167,7 +168,9 @@ export function Agenda({
     });
 
     return (
-        <div className={`agenda-container ${isMobile ? 'agenda-mobile' : ''}`} style={{
+        <div
+            className={`agenda-container ${isMobile ? 'agenda-mobile' : ''}`}
+            style={{
             background: 'var(--card-bg)',
             padding: isMobile ? '0.2rem' : '0.75rem',
             borderRadius: isMobile ? '10px' : 'var(--radius)',
@@ -177,7 +180,25 @@ export function Agenda({
             minHeight: 0,
             flex: 1,
             overflow: 'auto'
-        }}>
+        }}
+            onTouchStart={(e) => {
+                if (!isMobile || e.touches.length !== 1) return;
+                const t = e.touches[0];
+                swipeRef.current = { x: t.clientX, y: t.clientY };
+            }}
+            onTouchEnd={(e) => {
+                if (!isMobile || !swipeRef.current || e.changedTouches.length !== 1) return;
+                const t = e.changedTouches[0];
+                const dx = t.clientX - swipeRef.current.x;
+                const dy = t.clientY - swipeRef.current.y;
+                swipeRef.current = null;
+                if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+                const api = getApi();
+                if (!api) return;
+                if (dx < 0) api.next();
+                else api.prev();
+            }}
+        >
             <FullCalendar
                 ref={calendarRef}
                 plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
@@ -186,6 +207,7 @@ export function Agenda({
                     listRange: { type: 'list', duration: { days: listDays } }
                 }}
                 visibleRange={listVisibleRange}
+                stickyHeaderDates={false}
                 headerToolbar={{
                     left: isMobile ? 'prev,next' : 'prev,next today',
                     center: 'title',
@@ -204,8 +226,8 @@ export function Agenda({
                     setSelectedEvent(info.event);
                 }}
                 dayHeaderContent={(arg) => {
-                    if (!isMobile) return undefined;
-                    const letter = mobileDayLetters[arg.date.getDay()] || '';
+                    if (arg.view.type.includes('list')) return undefined;
+                    const letter = dayLetters[arg.date.getDay()] || '';
                     const dayNum = pad2(arg.date.getDate());
                     return `${letter} ${dayNum}`;
                 }}

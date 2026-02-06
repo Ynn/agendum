@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import init, { parse_and_normalize } from './pkg/agendum_core';
 import { openDB } from 'idb';
 import { ServiceDashboard } from './views/ServiceDashboard';
@@ -95,7 +95,10 @@ export default function App() {
   const [isWasmReady, setIsWasmReady] = useState(false);
   const [calendars, setCalendars] = useState<Calendar[]>([]);
   const [view, setView] = useState<View>('agenda');
-  const [courseSubjectFocus, setCourseSubjectFocus] = useState('');
+  const [courseSubject, setCourseSubject] = useState('');
+  const historyReadyRef = useRef(false);
+  const isPopRef = useRef(false);
+  const prevCourseSubjectRef = useRef(courseSubject);
   const [mainCalendarId, setMainCalendarId] = useState<string | null>(null);
   const [lang, setLang] = useState<Lang>(() => {
     try {
@@ -144,9 +147,46 @@ export default function App() {
 
   const handleCourseSubjectJump = (subject: string) => {
     if (!subject) return;
-    setCourseSubjectFocus(subject);
+    setCourseSubject(subject);
     setView('courses');
   };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onPopState = (e: PopStateEvent) => {
+      const state = e.state as { agendum?: boolean; view?: View; courseSubject?: string } | null;
+      if (!state?.agendum) return;
+      isPopRef.current = true;
+      setView(state.view ?? 'agenda');
+      setCourseSubject(state.courseSubject ?? '');
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const nextState = { agendum: true, view, courseSubject };
+    if (!historyReadyRef.current) {
+      window.history.replaceState(nextState, '');
+      historyReadyRef.current = true;
+      prevCourseSubjectRef.current = courseSubject;
+      return;
+    }
+    if (isPopRef.current) {
+      isPopRef.current = false;
+      prevCourseSubjectRef.current = courseSubject;
+      return;
+    }
+    const prevSubject = prevCourseSubjectRef.current;
+    const clearedSubject = prevSubject && !courseSubject && view === 'courses';
+    if (clearedSubject) {
+      window.history.replaceState(nextState, '');
+    } else {
+      window.history.pushState(nextState, '');
+    }
+    prevCourseSubjectRef.current = courseSubject;
+  }, [view, courseSubject]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Colors for new calendars
@@ -1162,8 +1202,8 @@ export default function App() {
               events={courseEvents}
               isMobile={isMobile}
               isTablet={isTablet && !isMobile}
-              initialSubject={courseSubjectFocus}
-              onInitialSubjectApplied={() => setCourseSubjectFocus('')}
+              selectedSubject={courseSubject}
+              onSubjectChange={setCourseSubject}
             />
           )}
 
