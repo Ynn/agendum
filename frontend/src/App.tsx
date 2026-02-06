@@ -753,9 +753,15 @@ export default function App() {
         return score;
       };
 
-      const promoLine = promoCandidates
-        .slice()
-        .sort((a, b) => scorePromo(b) - scorePromo(a))[0] || '';
+      const scoredPromos = promoCandidates
+        .map(line => ({ line, score: scorePromo(line) }))
+        .sort((a, b) => b.score - a.score || a.line.localeCompare(b.line));
+
+      const strongPromos = scoredPromos.filter(p => p.score >= 4);
+      const promoList = (strongPromos.length > 0 ? strongPromos : scoredPromos.slice(0, 1))
+        .map(p => p.line);
+
+      const promoLine = Array.from(new Set(promoList)).join(', ');
 
       // fallback for teachers
       if (teacherSet.size === 0) teacherSet.add('—');
@@ -763,7 +769,14 @@ export default function App() {
       const teachersNormalized = Array.from(teacherSet)
         .map(t => normalizeValue(normalizationRules.teachers, normalizationRules.hidden.teachers, t))
         .filter(Boolean);
-      const promoNormalized = normalizeValue(normalizationRules.promos, normalizationRules.hidden.promos, promoLine);
+      const promoNormalized = Array.from(new Set(
+        promoLine
+          .split(',')
+          .map(p => p.trim())
+          .filter(Boolean)
+          .map(p => normalizeValue(normalizationRules.promos, normalizationRules.hidden.promos, p))
+          .filter(Boolean)
+      )).join(', ');
 
       return { teachers: Array.from(new Set(teachersNormalized)), promo: promoNormalized };
     };

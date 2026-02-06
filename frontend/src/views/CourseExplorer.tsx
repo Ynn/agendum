@@ -46,14 +46,39 @@ export function CourseExplorer({ events, isMobile = false, isTablet = false }: P
                 return aTs - bTs;
             });
 
-        // Hide mutualized duplicates: same teacher, time, and type should appear once
-        const seen = new Set<string>();
-        return subjectEvents.filter(ev => {
+        const addPromos = (set: Set<string>, value?: string) => {
+            if (!value) return;
+            value
+                .split(',')
+                .map(v => v.trim())
+                .filter(Boolean)
+                .forEach(v => set.add(v));
+        };
+
+        // Merge mutualized duplicates: same teacher, time, and type should appear once
+        // but keep all promos (comma-separated)
+        const merged = new Map<string, { base: NormalizedEvent; promos: Set<string> }>();
+
+        subjectEvents.forEach(ev => {
             const key = `${ev.start_iso}|${ev.end_iso}|${ev.type_}|${(ev as any).extractedTeacher || ''}`;
-            if (seen.has(key)) return false;
-            seen.add(key);
-            return true;
+            let entry = merged.get(key);
+            if (!entry) {
+                entry = { base: ev, promos: new Set<string>() };
+                merged.set(key, entry);
+            }
+            addPromos(entry.promos, (ev as any).promo || '');
         });
+
+        return Array.from(merged.values())
+            .map(({ base, promos }) => ({
+                ...base,
+                promo: Array.from(promos).join(', ')
+            }))
+            .sort((a, b) => {
+                const aTs = (a as any).start_ts ?? 0;
+                const bTs = (b as any).start_ts ?? 0;
+                return aTs - bTs;
+            });
     }, [selectedSubject, events]);
 
     const formatDate = (d?: Date) => {
@@ -668,7 +693,28 @@ export function CourseExplorer({ events, isMobile = false, isTablet = false }: P
                                                         {splitTeachers((ev as any).extractedTeacher).join(', ') || '—'}
                                                     </td>
                                                     <td style={{ padding: '0.75rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                                                        {(ev as any).promo || '—'}
+                                                        {(() => {
+                                                            const promoText = (ev as any).promo || '—';
+                                                            return (
+                                                                <div
+                                                                    title={promoText}
+                                                                    style={{
+                                                                        display: 'inline-block',
+                                                                        width: '220px',
+                                                                        minWidth: '120px',
+                                                                        maxWidth: '480px',
+                                                                        whiteSpace: 'nowrap',
+                                                                        overflow: 'hidden',
+                                                                        textOverflow: 'ellipsis',
+                                                                        resize: 'horizontal',
+                                                                        paddingRight: '0.25rem',
+                                                                        verticalAlign: 'middle'
+                                                                    }}
+                                                                >
+                                                                    {promoText}
+                                                                </div>
+                                                            );
+                                                        })()}
                                                     </td>
                                                     <td style={{ padding: '0.75rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                                                         {ev.raw.location || '—'}
