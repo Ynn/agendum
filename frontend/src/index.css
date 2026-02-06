@@ -364,13 +364,14 @@ th {
 .filters-grid select {
   padding: 0.6rem;
   border-radius: var(--radius);
-  border: 1px solid #cbd5e1;
-  background: #fff;
+  border: 1px solid var(--border-color);
+  background: var(--card-bg);
+  color: var(--text-color);
 }
 
 .filters-sep {
   text-align: center;
-  color: #94a3b8;
+  color: var(--text-light);
   font-size: 0.85rem;
 }
 
@@ -384,9 +385,9 @@ th {
   width: 38px;
   height: 38px;
   border-radius: 999px;
-  border: 1px solid #e2e8f0;
-  background: #f1f5f9;
-  color: #475569;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
