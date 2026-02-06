@@ -103,7 +103,6 @@ export function Settings({
                     onRefresh={onRefreshCalendar}
                     onRename={onRenameCalendar}
                     onShowQr={setQrValue}
-                    onAdd={() => setShowImport(true)} // Redundant but passed to component
                 />
             </section>
 

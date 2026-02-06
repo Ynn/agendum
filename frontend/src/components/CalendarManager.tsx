@@ -12,10 +12,9 @@ interface Props {
     onRefresh: (id: string) => Promise<void>;
     onRename: (id: string, name: string) => void;
     onShowQr: (url: string) => void;
-    onAdd: () => void;
 }
 
-export function CalendarManager({ calendars, isMobile = false, onToggle, onToggleStats, onRemove, onRefresh, onRename, onShowQr, onAdd }: Props) {
+export function CalendarManager({ calendars, isMobile = false, onToggle, onToggleStats, onRemove, onRefresh, onRename, onShowQr }: Props) {
     const t = useT();
     const [editingId, setEditingId] = useState<string | null>(null);
     const [draftName, setDraftName] = useState('');
@@ -35,9 +34,6 @@ export function CalendarManager({ calendars, isMobile = false, onToggle, onToggl
         <div className="card calendar-manager fade-in" style={{ padding: isMobile ? '0.55rem' : '0.75rem', flex: '1 1 300px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isMobile ? '0.6rem' : '1rem' }}>
                 <h3 style={{ margin: 0, fontSize: isMobile ? '0.86rem' : undefined }}>{t.calendars}</h3>
-                <button onClick={onAdd} className="btn btn-primary" style={{ padding: isMobile ? '0.24rem 0.45rem' : '0.4rem 0.8rem', fontSize: isMobile ? '0.72rem' : '0.85rem' }}>
-                    + {t.import}
-                </button>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '0.38rem' : '0.5rem' }}>
