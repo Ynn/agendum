@@ -29,9 +29,12 @@ fn local_offset() -> FixedOffset {
 fn parse_ical_datetime(s: &str) -> Option<DateTime<FixedOffset>> {
     let trimmed = s.trim();
 
-    // Try explicit Z (UTC)
-    if let Ok(dt) = DateTime::parse_from_str(trimmed, "%Y%m%dT%H%M%SZ") {
-        return Some(dt.with_timezone(&local_offset()));
+    // Try explicit Z (UTC) by parsing as naive then assuming UTC
+    if let Some(stripped) = trimmed.strip_suffix('Z') {
+        if let Ok(naive) = NaiveDateTime::parse_from_str(stripped, "%Y%m%dT%H%M%S") {
+            let utc = FixedOffset::east_opt(0)?.from_local_datetime(&naive).single()?;
+            return Some(utc.with_timezone(&local_offset()));
+        }
     }
 
     // Try explicit offset
@@ -50,22 +53,25 @@ fn parse_ical_datetime(s: &str) -> Option<DateTime<FixedOffset>> {
 
 pub fn normalize(events: Vec<RawEvent>) -> Vec<NormalizedEvent> {
     // Heuristic Regexes (ordered rules)
-    // 1) TYPE + SUBJECT  e.g. "CM PRORES", "TD EXPO IA"
-    let re_type_subject = Regex::new(
-        r"(?i)^\s*(CM|TD|TP|CT|DS|EXAM|PROJET|RÉUNION|REUNION)\b[\s-]+(.+)$",
-    )
+    // 1) TYPE + SUBJECT  e.g. "CM PRORES", "TD EXPO IA", "CC1 MODX"
+    let type_token = r"(CM|TD|TP|CT|DS|CC|EXAM|PROJET|RÉUNION|REUNION)";
+    let type_suffix = r"(?:\d+(?:[.-]\d+)*[A-G]?|[A-G])?";
+
+    let re_type_subject = Regex::new(&format!(
+        r"(?i)^\s*{type_token}{type_suffix}\b[\s-]+(.+)$"
+    ))
     .unwrap();
 
-    // 2) SUBJECT + TYPE  e.g. "PPAR TD", "IPD TP Cla 1"
-    let re_subject_type = Regex::new(
-        r"(?i)^\s*(.+?)\s+(CM|TD|TP|CT|DS|EXAM|PROJET|RÉUNION|REUNION)(?:\b|\s|$)",
-    )
+    // 2) SUBJECT + TYPE  e.g. "PPAR TD", "MODX TP3.1", "ANGL TP2"
+    let re_subject_type = Regex::new(&format!(
+        r"(?i)^\s*(.+?)\s+{type_token}{type_suffix}(?:\b|\s|$)"
+    ))
     .unwrap();
 
     // 3) SUBJECT - TYPE  e.g. "BDL2 TD - Coworking space"
-    let re_subject_dash_type = Regex::new(
-        r"(?i)^\s*(.+?)\s*-\s*(CM|TD|TP|CT|DS|EXAM|PROJET|RÉUNION|REUNION)\b.*$",
-    )
+    let re_subject_dash_type = Regex::new(&format!(
+        r"(?i)^\s*(.+?)\s*-\s*{type_token}{type_suffix}\b.*$"
+    ))
     .unwrap();
 
     events
@@ -180,8 +186,10 @@ mod tests {
         let e1 = make_event("PPAR TD", "20250102T080000", "20250102T093000");
         let e2 = make_event("BDL2 TD - Coworking space - PNRB", "20250103T100000", "20250103T120000");
         let e3 = make_event("Réunion pédagogique Responsables formation", "20250104T070000", "20250104T083000");
+        let e4 = make_event("MODX TP3.1", "20250105T070000", "20250105T083000");
+        let e5 = make_event("CC1 MODX", "20250106T070000", "20250106T083000");
 
-        let normalized = normalize(vec![e1, e2, e3]);
+        let normalized = normalize(vec![e1, e2, e3, e4, e5]);
 
         assert_eq!(normalized[0].type_, "TD");
         assert_eq!(normalized[0].subject, "PPAR");
@@ -191,5 +199,11 @@ mod tests {
 
         assert!(normalized[2].type_.contains("RÉUNION") || normalized[2].type_.contains("REUNION"));
         assert!(normalized[2].subject.to_lowercase().contains("pédagogique"));
+
+        assert_eq!(normalized[3].type_, "TP");
+        assert_eq!(normalized[3].subject, "MODX");
+
+        assert_eq!(normalized[4].type_, "CC");
+        assert_eq!(normalized[4].subject, "MODX");
     }
 }

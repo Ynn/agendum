@@ -135,35 +135,56 @@ export function CourseExplorer({ events, isMobile = false, isTablet = false }: P
 
     // 3. Stats & Teacher Analysis
     const stats = useMemo(() => {
-        let cm = 0, td = 0, tp = 0, exam = 0, total = 0;
-        const teacherMap = new Map<string, { cm: number, td: number, tp: number, total: number }>();
+        let cm = 0, td = 0, tp = 0, project = 0, exam = 0, other = 0, total = 0;
+        const teacherMap = new Map<string, { cm: number, td: number, tp: number, project: number, exam: number, other: number, total: number }>();
 
         courseEvents.forEach(ev => {
             const dur = ev.duration_hours || 0;
             const type = (ev.type_ || "").toUpperCase();
 
             // Stats
-            if (type.includes("CM")) cm += dur;
-            else if (type.includes("TD")) td += dur;
-            else if (type.includes("TP")) tp += dur;
-            else if (type.includes("EXAM") || type.includes("DS")) exam += dur;
-            total += dur;
+            let bucket: 'cm' | 'td' | 'tp' | 'project' | 'exam' | 'other' = 'other';
+            if (type.includes("CM")) bucket = 'cm';
+            else if (type.includes("TD")) bucket = 'td';
+            else if (type.includes("TP")) bucket = 'tp';
+            else if (type.includes("PROJET") || type.includes("PROJECT")) bucket = 'project';
+            else if (type.includes("EXAM") || type.includes("DS") || type.includes("CC") || type.includes("CT")) bucket = 'exam';
+            else bucket = 'other';
+
+            if (bucket === 'cm') cm += dur;
+            else if (bucket === 'td') td += dur;
+            else if (bucket === 'tp') tp += dur;
+            else if (bucket === 'project') project += dur;
+            else if (bucket === 'exam') exam += dur;
+            else other += dur;
+
+            if (bucket === 'cm' || bucket === 'td' || bucket === 'tp' || bucket === 'project') {
+                total += dur;
+            }
 
             // Teacher Extraction
             const teacherNames = splitTeachers((ev as any).extractedTeacher);
             const targetTeachers = teacherNames.length > 0 ? teacherNames : [t.unknown];
 
             targetTeachers.forEach((teacherName) => {
-                if (!teacherMap.has(teacherName)) teacherMap.set(teacherName, { cm: 0, td: 0, tp: 0, total: 0 });
+                if (!teacherMap.has(teacherName)) {
+                    teacherMap.set(teacherName, { cm: 0, td: 0, tp: 0, project: 0, exam: 0, other: 0, total: 0 });
+                }
                 const tStat = teacherMap.get(teacherName)!;
-                tStat.total += dur;
-                if (type.includes("CM")) tStat.cm += dur;
-                else if (type.includes("TD")) tStat.td += dur;
-                else if (type.includes("TP")) tStat.tp += dur;
+                if (bucket === 'cm') tStat.cm += dur;
+                else if (bucket === 'td') tStat.td += dur;
+                else if (bucket === 'tp') tStat.tp += dur;
+                else if (bucket === 'project') tStat.project += dur;
+                else if (bucket === 'exam') tStat.exam += dur;
+                else tStat.other += dur;
+
+                if (bucket === 'cm' || bucket === 'td' || bucket === 'tp' || bucket === 'project') {
+                    tStat.total += dur;
+                }
             });
         });
 
-        return { cm, td, tp, exam, total, teachers: Array.from(teacherMap.entries()) };
+        return { cm, td, tp, project, exam, other, total, teachers: Array.from(teacherMap.entries()) };
     }, [courseEvents, t]);
 
     // Calendar Events Format
@@ -331,6 +352,13 @@ export function CourseExplorer({ events, isMobile = false, isTablet = false }: P
                                         <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#374151' }}>{stats.tp.toFixed(1)}h</div>
                                     </div>
                                 </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                    <span style={{ fontSize: '1rem' }}>🧩</span>
+                                    <div>
+                                        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.project}</div>
+                                        <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#7c3aed' }}>{stats.project.toFixed(1)}h</div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -393,7 +421,7 @@ export function CourseExplorer({ events, isMobile = false, isTablet = false }: P
                                         <div key={name} className="card" style={{ padding: '0.45rem 0.55rem' }}>
                                             <div style={{ fontWeight: 700, fontSize: '0.84rem', marginBottom: '0.25rem' }}>{name}</div>
                                             <div style={{ fontSize: '0.76rem', color: '#475569' }}>
-                                                CM {s.cm.toFixed(1)}h • TD {s.td.toFixed(1)}h • TP {s.tp.toFixed(1)}h • {t.total} {s.total.toFixed(1)}h
+                                                CM {s.cm.toFixed(1)}h • TD {s.td.toFixed(1)}h • TP {s.tp.toFixed(1)}h • {t.project} {s.project.toFixed(1)}h • {t.total} {s.total.toFixed(1)}h • {t.exam} {s.exam.toFixed(1)}h • {t.other} {s.other.toFixed(1)}h
                                             </div>
                                         </div>
                                     ))}
@@ -623,6 +651,13 @@ export function CourseExplorer({ events, isMobile = false, isTablet = false }: P
                                         <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#374151' }}>{stats.tp.toFixed(1)}h</div>
                                     </div>
                                 </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                    <span style={{ fontSize: '1rem' }}>🧩</span>
+                                    <div>
+                                        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.project}</div>
+                                        <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#7c3aed' }}>{stats.project.toFixed(1)}h</div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -755,7 +790,10 @@ export function CourseExplorer({ events, isMobile = false, isTablet = false }: P
                                                 <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>CM</th>
                                                 <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TD</th>
                                                 <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TP</th>
+                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.project}</th>
                                                 <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.total}</th>
+                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.exam}</th>
+                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.other}</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -765,7 +803,10 @@ export function CourseExplorer({ events, isMobile = false, isTablet = false }: P
                                                     <td style={{ padding: '0.8rem', color: '#1e40af', fontFamily: 'var(--font-mono)' }}>{s.cm.toFixed(1)}h</td>
                                                     <td style={{ padding: '0.8rem', color: '#166534', fontFamily: 'var(--font-mono)' }}>{s.td.toFixed(1)}h</td>
                                                     <td style={{ padding: '0.8rem', color: '#92400e', fontFamily: 'var(--font-mono)' }}>{s.tp.toFixed(1)}h</td>
+                                                    <td style={{ padding: '0.8rem', color: '#7c3aed', fontFamily: 'var(--font-mono)' }}>{s.project.toFixed(1)}h</td>
                                                     <td style={{ padding: '0.8rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>{s.total.toFixed(1)}h</td>
+                                                    <td style={{ padding: '0.8rem', color: '#b91c1c', fontFamily: 'var(--font-mono)' }}>{s.exam.toFixed(1)}h</td>
+                                                    <td style={{ padding: '0.8rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{s.other.toFixed(1)}h</td>
                                                 </tr>
                                             ))}
                                         </tbody>

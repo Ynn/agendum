@@ -12,6 +12,7 @@ interface Stats {
     cm: number;
     td: number;
     tp: number;
+    project: number;
     reunion: number;
     exam: number;
     other: number;
@@ -53,11 +54,21 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false }: 
         cm: true,
         td: true,
         tp: true,
+        project: true,
         reunion: false,
         exam: false,
-        other: false
+        other: true
     });
-    const colKeys = ['cm', 'td', 'tp', 'reunion', 'exam', 'other'] as const;
+    const colKeys = ['cm', 'td', 'tp', 'project', 'reunion', 'exam', 'other'] as const;
+    const colLabels: Record<typeof colKeys[number], string> = {
+        cm: 'CM',
+        td: 'TD',
+        tp: 'TP',
+        project: t.project,
+        reunion: t.reunion,
+        exam: t.exam,
+        other: t.other
+    };
 
     const baseEvents = useMemo(() => {
         if (!selectedTeacher) return events;
@@ -72,7 +83,7 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false }: 
     }, [events, selectedTeacher, t]);
 
     const summary = useMemo(() => {
-        const totals = { cm: 0, td: 0, tp: 0, reunion: 0, exam: 0, other: 0 };
+        const totals = { cm: 0, td: 0, tp: 0, project: 0, reunion: 0, exam: 0, other: 0 };
         baseEvents.forEach(ev => {
             if ((ev as any).is_duplicate) return;
             const duration = ev.duration_hours || 0;
@@ -80,12 +91,14 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false }: 
             if (type.includes('CM')) totals.cm += duration;
             else if (type.includes('TD')) totals.td += duration;
             else if (type.includes('TP')) totals.tp += duration;
+            else if (type.includes('PROJET') || type.includes('PROJECT')) totals.project += duration;
             else if (type.includes('RÉUNION') || type.includes('REUNION')) totals.reunion += duration;
-            else if (type.includes('EXAM') || type.includes('DS') || type.includes('CT')) totals.exam += duration;
+            else if (type.includes('EXAM') || type.includes('DS') || type.includes('CT') || type.includes('CC')) totals.exam += duration;
             else totals.other += duration;
         });
-        const totalTeaching = totals.cm + totals.td + totals.tp;
-        return { ...totals, totalTeaching };
+        const totalCore = totals.cm + totals.td + totals.tp;
+        const totalTeaching = totalCore + totals.project;
+        return { ...totals, totalCore, totalTeaching };
     }, [baseEvents]);
 
     const teacherStats = useMemo(() => {
@@ -124,7 +137,7 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false }: 
                 subject = subject.trim();
 
                 if (!tData.subjects.has(subject)) {
-                    tData.subjects.set(subject, { cm: 0, td: 0, tp: 0, reunion: 0, exam: 0, other: 0, total: 0, count: 0 });
+                    tData.subjects.set(subject, { cm: 0, td: 0, tp: 0, project: 0, reunion: 0, exam: 0, other: 0, total: 0, count: 0 });
                 }
 
                 const entry = tData.subjects.get(subject)!;
@@ -134,8 +147,9 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false }: 
                 if (type.includes("CM")) entry.cm += duration;
                 else if (type.includes("TD")) entry.td += duration;
                 else if (type.includes("TP")) entry.tp += duration;
+                else if (type.includes("PROJET") || type.includes("PROJECT")) entry.project += duration;
                 else if (type.includes("RÉUNION") || type.includes("REUNION")) entry.reunion += duration;
-                else if (type.includes("EXAM") || type.includes("DS") || type.includes("CT")) entry.exam += duration;
+                else if (type.includes("EXAM") || type.includes("DS") || type.includes("CT") || type.includes("CC")) entry.exam += duration;
                 else entry.other += duration;
 
                 entry.count++;
@@ -146,20 +160,21 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false }: 
         return Array.from(teachers.values())
             .map(t => {
                 let tGrandTotal = 0;
-                const totalsAll = { cm: 0, td: 0, tp: 0, reunion: 0, exam: 0, other: 0 };
+                const totalsAll = { cm: 0, td: 0, tp: 0, project: 0, reunion: 0, exam: 0, other: 0 };
                 const subjectList = Array.from(t.subjects.entries()).map(([name, s]) => {
                     totalsAll.cm += s.cm;
                     totalsAll.td += s.td;
                     totalsAll.tp += s.tp;
+                    totalsAll.project += s.project;
                     totalsAll.reunion += s.reunion;
                     totalsAll.exam += s.exam;
                     totalsAll.other += s.other;
-                    const filteredTotal = s.cm + s.td + s.tp;
+                    const filteredTotal = s.cm + s.td + s.tp + s.project;
                     tGrandTotal += filteredTotal;
                     return { name, ...s, filteredTotal };
                 }).filter(row => {
                     if (showEmpty) return true;
-                    const hasCore = row.cm > 0 || row.td > 0 || row.tp > 0;
+                    const hasCore = row.cm > 0 || row.td > 0 || row.tp > 0 || row.project > 0;
                     const hasExtras = (cols.exam && row.exam > 0) || (cols.reunion && row.reunion > 0) || (cols.other && row.other > 0);
                     return hasCore || hasExtras;
                 }).sort((a, b) => b.filteredTotal - a.filteredTotal);
@@ -196,7 +211,7 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false }: 
                         {colKeys.map(key => (
                             <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.28rem', cursor: 'pointer', textTransform: 'uppercase', fontSize: isMobile ? '0.64rem' : '0.72rem' }}>
                                 <input type="checkbox" checked={cols[key]} onChange={e => setCols({ ...cols, [key]: e.target.checked })} />
-                                {key}
+                                {colLabels[key]}
                             </label>
                         ))}
                     </div>
@@ -219,7 +234,14 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false }: 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                         <span style={{ fontSize: '1rem' }}>⏱️</span>
                         <div>
-                            <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.total_label}</div>
+                            <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.total_core_label}</div>
+                            <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-color)' }}>{summary.totalCore.toFixed(1)}h</div>
+                        </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <span style={{ fontSize: '1rem' }}>∑</span>
+                        <div>
+                            <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.total_with_project_label}</div>
                             <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-color)' }}>{summary.totalTeaching.toFixed(1)}h</div>
                         </div>
                     </div>
@@ -242,6 +264,13 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false }: 
                         <div>
                             <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TP</div>
                             <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#374151' }}>{summary.tp.toFixed(1)}h</div>
+                        </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <span style={{ fontSize: '1rem' }}>🧩</span>
+                        <div>
+                            <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.project}</div>
+                            <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#7c3aed' }}>{summary.project.toFixed(1)}h</div>
                         </div>
                     </div>
                     <div style={{
@@ -270,7 +299,8 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false }: 
             ) : (
                 teacherStats.map(teacher => {
                     const totals = teacher.totalsAll;
-                    const totalTeaching = totals.cm + totals.td + totals.tp;
+                    const totalCore = totals.cm + totals.td + totals.tp;
+                    const totalTeaching = totalCore + totals.project;
                     return (
                         <section key={teacher.name} className="card" style={{ padding: '0', marginBottom: '2rem', overflow: 'hidden' }}>
                             <div style={{ background: 'var(--bg-secondary)', padding: isMobile ? '0.55rem 0.7rem' : '1rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -293,7 +323,14 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false }: 
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                                         <span style={{ fontSize: '1rem' }}>⏱️</span>
                                         <div>
-                                            <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.total_label}</div>
+                                            <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.total_core_label}</div>
+                                            <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-color)' }}>{totalCore.toFixed(1)}h</div>
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                        <span style={{ fontSize: '1rem' }}>∑</span>
+                                        <div>
+                                            <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.total_with_project_label}</div>
                                             <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-color)' }}>{totalTeaching.toFixed(1)}h</div>
                                         </div>
                                     </div>
@@ -314,13 +351,20 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false }: 
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                                         <span style={{ fontSize: '1rem' }}>🔬</span>
                                         <div>
-                                            <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TP</div>
-                                            <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#374151' }}>{totals.tp.toFixed(1)}h</div>
-                                        </div>
+                                        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TP</div>
+                                        <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#374151' }}>{totals.tp.toFixed(1)}h</div>
                                     </div>
-                                    <div style={{
-                                        marginLeft: 'auto',
-                                        minWidth: isMobile ? '100%' : '260px',
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                    <span style={{ fontSize: '1rem' }}>🧩</span>
+                                    <div>
+                                        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.project}</div>
+                                        <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#7c3aed' }}>{totals.project.toFixed(1)}h</div>
+                                    </div>
+                                </div>
+                                <div style={{
+                                    marginLeft: 'auto',
+                                    minWidth: isMobile ? '100%' : '260px',
                                         color: 'var(--text-muted)',
                                         fontSize: isMobile ? '0.68rem' : '0.74rem',
                                         borderLeft: isMobile ? '0' : '1px solid var(--border-color)',
@@ -344,6 +388,7 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false }: 
                                             {cols.cm && <th style={{ textAlign: 'right' }}>CM</th>}
                                             {cols.td && <th style={{ textAlign: 'right' }}>TD</th>}
                                             {cols.tp && <th style={{ textAlign: 'right' }}>TP</th>}
+                                            {cols.project && <th style={{ textAlign: 'right' }}>{t.project}</th>}
                                             <th style={{ textAlign: 'right', padding: isMobile ? '0.45rem 0.6rem' : '1rem 1.5rem', background: 'var(--bg-secondary)' }}>{t.total}</th>
                                             {cols.exam && <th style={{ textAlign: 'right' }}>{t.exam}</th>}
                                             {cols.reunion && <th style={{ textAlign: 'right' }}>{t.reunion}</th>}
@@ -357,6 +402,7 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false }: 
                                                 {cols.cm && <td style={{ textAlign: 'right' }}>{row.cm > 0 ? row.cm.toFixed(1) : '-'}</td>}
                                                 {cols.td && <td style={{ textAlign: 'right' }}>{row.td > 0 ? row.td.toFixed(1) : '-'}</td>}
                                                 {cols.tp && <td style={{ textAlign: 'right' }}>{row.tp > 0 ? row.tp.toFixed(1) : '-'}</td>}
+                                                {cols.project && <td style={{ textAlign: 'right' }}>{row.project > 0 ? row.project.toFixed(1) : '-'}</td>}
                                                 <td style={{ textAlign: 'right', padding: isMobile ? '0.42rem 0.6rem' : '0.8rem 1.5rem', fontWeight: 700, background: 'var(--bg-secondary)' }}>
                                                     {row.filteredTotal.toFixed(1)}
                                                 </td>
