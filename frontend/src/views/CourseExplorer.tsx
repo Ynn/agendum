@@ -18,6 +18,7 @@ export function CourseExplorer({ events, isMobile = false, isTablet = false }: P
     const [selectedSubject, setSelectedSubject] = useState('');
     const [subjectFilter, setSubjectFilter] = useState('');
     const [tab, setTab] = useState<'list' | 'calendar' | 'teachers'>('list');
+    const [selectedEvent, setSelectedEvent] = useState<NormalizedEvent | null>(null);
     const lang = useLang();
     const t = useT();
 
@@ -74,6 +75,37 @@ export function CourseExplorer({ events, isMobile = false, isTablet = false }: P
             .split(',')
             .map(t => t.trim())
             .filter(Boolean);
+    };
+
+    const rawEventLabel = lang === 'fr' ? "Voir l'événement brut" : 'View raw event';
+
+    const renderEventModal = () => {
+        if (!selectedEvent) return null;
+        const start = (selectedEvent as any).start_date as Date | undefined;
+        const end = (selectedEvent as any).end_date as Date | undefined;
+        const title = selectedEvent.raw.summary?.trim() ||
+            `${selectedEvent.type_} ${selectedEvent.subject || ''}`.trim() ||
+            t.unknown;
+
+        return (
+            <div className="event-modal-overlay">
+                <div className="event-modal-backdrop" onClick={() => setSelectedEvent(null)} />
+                <div className="card event-modal">
+                    <div className="event-modal-header">
+                        <div style={{ fontWeight: 700 }}>{title}</div>
+                        <button className="btn" onClick={() => setSelectedEvent(null)} style={{ padding: '0.2rem 0.6rem' }}>×</button>
+                    </div>
+                    <div className="event-modal-grid">
+                        <div><strong>{t.time}:</strong> {formatDate(start)} • {formatTime(start)} - {formatTime(end)}</div>
+                        <div><strong>{t.location}:</strong> {selectedEvent.raw.location || '—'}</div>
+                        <div><strong>{t.duration}:</strong> {selectedEvent.duration_hours}h</div>
+                    </div>
+                    <div style={{ marginTop: '0.6rem', fontSize: '0.9rem', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>
+                        {selectedEvent.raw.description || '—'}
+                    </div>
+                </div>
+            </div>
+        );
     };
 
     // 3. Stats & Teacher Analysis
@@ -133,6 +165,7 @@ export function CourseExplorer({ events, isMobile = false, isTablet = false }: P
 
     if (isMobile) {
         return (
+            <>
             <div className="course-mobile fade-in page-scroll" style={{ height: '100%', minHeight: 0, overflowY: 'auto', padding: '0.35rem 0.2rem 0.6rem' }}>
                 {!selectedSubject ? (
                     <div className="card" style={{ padding: '0.7rem', minHeight: 0 }}>
@@ -282,7 +315,23 @@ export function CourseExplorer({ events, isMobile = false, isTablet = false }: P
                                     {courseEvents.map((ev, i) => (
                                         <div key={i} className="card" style={{ padding: '0.5rem' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.4rem', marginBottom: '0.2rem' }}>
-                                                <strong style={{ fontSize: '0.82rem' }}>{ev.type_}</strong>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                                    <strong style={{ fontSize: '0.82rem' }}>{ev.type_}</strong>
+                                                    <button
+                                                        className="btn"
+                                                        title={rawEventLabel}
+                                                        aria-label={rawEventLabel}
+                                                        onClick={() => setSelectedEvent(ev)}
+                                                        style={{
+                                                            padding: '0.1rem 0.35rem',
+                                                            fontSize: '0.7rem',
+                                                            lineHeight: 1,
+                                                            borderRadius: '999px'
+                                                        }}
+                                                    >
+                                                        ⓘ
+                                                    </button>
+                                                </div>
                                                 <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{ev.duration_hours}h</span>
                                             </div>
                                             <div style={{ fontSize: '0.77rem', color: 'var(--text-secondary)' }}>
@@ -329,6 +378,8 @@ export function CourseExplorer({ events, isMobile = false, isTablet = false }: P
                     </div>
                 )}
             </div>
+            {renderEventModal()}
+            </>
         );
     }
 
@@ -577,21 +628,37 @@ export function CourseExplorer({ events, isMobile = false, isTablet = false }: P
                                                     onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                                 >
                                                     <td style={{ padding: '0.75rem' }}>
-                                                        <span style={{
-                                                            padding: '4px 12px',
-                                                            borderRadius: 'var(--radius-full)',
-                                                            fontSize: '0.8rem',
-                                                            fontWeight: 600,
-                                                            background: ev.type_.toUpperCase().includes('CM') ? '#dbeafe' :
-                                                                ev.type_.toUpperCase().includes('TD') ? '#dcfce7' :
-                                                                    ev.type_.toUpperCase().includes('TP') ? '#fef3c7' : '#f3f4f6',
-                                                            color: ev.type_.toUpperCase().includes('CM') ? '#1e40af' :
-                                                                ev.type_.toUpperCase().includes('TD') ? '#166534' :
-                                                                    ev.type_.toUpperCase().includes('TP') ? '#92400e' : '#374151',
-                                                            display: 'inline-block'
-                                                        }}>
-                                                            {ev.type_}
-                                                        </span>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                                            <span style={{
+                                                                padding: '4px 12px',
+                                                                borderRadius: 'var(--radius-full)',
+                                                                fontSize: '0.8rem',
+                                                                fontWeight: 600,
+                                                                background: ev.type_.toUpperCase().includes('CM') ? '#dbeafe' :
+                                                                    ev.type_.toUpperCase().includes('TD') ? '#dcfce7' :
+                                                                        ev.type_.toUpperCase().includes('TP') ? '#fef3c7' : '#f3f4f6',
+                                                                color: ev.type_.toUpperCase().includes('CM') ? '#1e40af' :
+                                                                    ev.type_.toUpperCase().includes('TD') ? '#166534' :
+                                                                        ev.type_.toUpperCase().includes('TP') ? '#92400e' : '#374151',
+                                                                display: 'inline-block'
+                                                            }}>
+                                                                {ev.type_}
+                                                            </span>
+                                                            <button
+                                                                className="btn"
+                                                                title={rawEventLabel}
+                                                                aria-label={rawEventLabel}
+                                                                onClick={() => setSelectedEvent(ev)}
+                                                                style={{
+                                                                    padding: '0.12rem 0.35rem',
+                                                                    fontSize: '0.7rem',
+                                                                    lineHeight: 1,
+                                                                    borderRadius: '999px'
+                                                                }}
+                                                            >
+                                                                ⓘ
+                                                            </button>
+                                                        </div>
                                                     </td>
                                                     <td style={{ padding: '0.75rem', fontSize: '0.9rem' }}>{formatDate((ev as any).start_date)}</td>
                                                     <td style={{ padding: '0.75rem', fontSize: '0.9rem', fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
@@ -667,6 +734,7 @@ export function CourseExplorer({ events, isMobile = false, isTablet = false }: P
                     </>
                 )}
             </div>
+            {renderEventModal()}
         </div>
     );
 }

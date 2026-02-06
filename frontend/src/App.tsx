@@ -542,11 +542,52 @@ export default function App() {
 
   // 1. All events flat list (for Course Explorer & Stats & General Search)
   const allEvents = useMemo(() => {
-    const nameInlineRegex = /[A-ZÉÈÀÂÊÎÔÛÄËÏÖÜŸÇ][\p{L}'\-]+\s+[A-ZÉÈÀÂÊÎÔÛÄËÏÖÜŸÇ][\p{L}'\-]+/gu;
+    const nameInlineRegex = /(?:[A-ZÀ-ÖØ-Ý][A-ZÀ-ÖØ-Ý'’\-]*\s+){1,3}[A-ZÀ-ÖØ-Ý][a-zà-öø-ÿ'’\-]+/gu;
 
-    const normalizeDescription = (desc: string) => desc.replace(/\\n/g, '\n').replace(/\r/g, '\n');
+    const normalizeDescription = (desc: string) =>
+      desc
+        .replace(/\r/g, '\n')
+        // Unfold iCal continuation lines that start with a space or tab
+        .replace(/\n[ \t]+/g, '')
+        // Keep compatibility if some sources still contain literal \\n
+        .replace(/\\n/g, '\n');
 
-    const stopWords = ['licence', 'license', 'master', 'promo', 'parcours', 'but', 'dut', 'lp', 'sph', 'services', 'produits', 'habitat', 'ingenierie', 'ingénierie', 'info', 'alternant', 'classique'];
+    const stopTokens = new Set([
+      'licence',
+      'license',
+      'master',
+      'parcours',
+      'promo',
+      'promotion',
+      'groupe',
+      'group',
+      'mineure',
+      'mineures',
+      'majeure',
+      'majeures',
+      'alternant',
+      'alternants',
+      'classique',
+      'classiques',
+      'option',
+      'module',
+      'semestre',
+      'ue',
+      'cours',
+      'cm',
+      'td',
+      'tp',
+      'exam',
+      'examen',
+      'projet',
+      'reunion',
+      'réunion',
+      'stage',
+      'soutenance',
+      'rattrapage',
+      'alt',
+      'cla'
+    ]);
 
     const normalizeValue = (
       map: Record<string, string>,
@@ -559,14 +600,102 @@ export default function App() {
       return candidate ? candidate.trim() : trimmed;
     };
 
+    const splitWordParts = (word: string) =>
+      word.replace(/[’]/g, "'").split(/[-']/).filter(Boolean);
+
+    const isAlphaPart = (part: string) => /^\p{L}+$/u.test(part);
+
+    const isUpperPart = (part: string) =>
+      isAlphaPart(part) && part === part.toUpperCase();
+
+    const isTitlePart = (part: string) => {
+      if (!isAlphaPart(part)) return false;
+      return (
+        part[0] === part[0].toUpperCase() &&
+        part.slice(1) === part.slice(1).toLowerCase()
+      );
+    };
+
+    const isUpperWord = (word: string) => splitWordParts(word).every(isUpperPart);
+    const isTitleWord = (word: string) => splitWordParts(word).every(isTitlePart);
+
+    const normalizeToken = (token: string) =>
+      token
+        .replace(/[’]/g, "'")
+        .replace(/[^\p{L}\d]/gu, '')
+        .toLowerCase();
+
+    const isLikelyPromoLine = (line: string) => {
+      const words = line.split(/\s+/).map(w => w.trim()).filter(Boolean);
+      if (words.length === 0) return false;
+
+      for (const w of words) {
+        const normalized = normalizeToken(w);
+        if (!normalized) continue;
+        if (/\d/.test(normalized)) return true;
+        if (/^[mld]\d$/i.test(normalized)) return true;
+        if (stopTokens.has(normalized)) return true;
+      }
+      return false;
+    };
+
     const isLikelyName = (token: string) => {
       const cleaned = token.trim().replace(/\s+/g, ' ');
       if (!cleaned) return false;
-      const lower = cleaned.toLowerCase();
-      if (stopWords.some(w => lower.includes(w))) return false;
+      if (/\d/.test(cleaned)) return false;
+      if (/(https?:\/\/|@)/i.test(cleaned)) return false;
+      if (/\s[-–—/]\s/.test(cleaned)) return false;
+      if (/[<>\[\]{}()]/.test(cleaned)) return false;
+
       const parts = cleaned.split(' ');
-      if (parts.length < 2 || parts.length > 3) return false;
-      return parts.every(p => /^[A-ZÉÈÀÂÊÎÔÛÄËÏÖÜŸÇ][\p{L}'\-]+$/u.test(p));
+      if (parts.length < 2 || parts.length > 5) return false;
+
+      let upperCount = 0;
+      let titleCount = 0;
+
+      for (const p of parts) {
+        const normalized = normalizeToken(p);
+        if (!normalized) return false;
+        if (stopTokens.has(normalized)) return false;
+        if (!splitWordParts(p).every(isAlphaPart)) return false;
+        if (isUpperWord(p)) upperCount += 1;
+        if (isTitleWord(p)) titleCount += 1;
+      }
+
+      if (upperCount === 0 || titleCount === 0) return false;
+      const last = parts[parts.length - 1];
+      if (!(isTitleWord(last) || isUpperWord(last))) return false;
+
+      return true;
+    };
+
+    const splitStuckName = (token: string) => {
+      const trimmed = token.trim();
+      if (!trimmed) return null;
+      if (/\s/.test(trimmed)) return null;
+      const cleaned = trimmed.replace(/^[^\p{L}]+|[^\p{L}]+$/gu, '');
+      if (!cleaned) return null;
+      const m = /^([A-ZÀ-ÖØ-Ý'’\-]{2,})([A-ZÀ-ÖØ-Ý][a-zà-öø-ÿ'’\-]+)$/.exec(cleaned);
+      if (!m) return null;
+      return `${m[1]} ${m[2]}`;
+    };
+
+    const extractNamesFromText = (text: string) => {
+      const names = new Set<string>();
+      const cleaned = text.trim().replace(/\s+/g, ' ');
+      if (!cleaned) return names;
+
+      if (isLikelyName(cleaned)) names.add(cleaned);
+
+      const repaired = splitStuckName(cleaned);
+      if (repaired && isLikelyName(repaired)) names.add(repaired);
+
+      for (const match of cleaned.matchAll(nameInlineRegex)) {
+        const candidate = match[0].trim().replace(/\s+/g, ' ');
+        if (isLikelyName(candidate)) names.add(candidate);
+      }
+
+      return names;
     };
 
     const extractMeta = (ev: NormalizedEvent) => {
@@ -582,31 +711,54 @@ export default function App() {
       const lines = desc
         .split(/\n+/)
         .map((l: string) => l.trim())
-        .filter((l: string) => l.length > 0 && !/modifi[eé]\s*le/i.test(l));
+        .filter((l: string) => l.length > 0 && !/modifi[eé]\s*le/i.test(l))
+        .filter((l: string) => !/^[.\-–—]+$/.test(l));
 
       const teacherSet = new Set<string>();
       const promoCandidates: string[] = [];
 
-      // Split on commas/semicolons to isolate names from promo lines
-      const tokens = lines.flatMap(l => l.split(/[,;]+/).map(part => part.trim()).filter(Boolean));
+      lines.forEach(line => {
+        const linePromoLike = isLikelyPromoLine(line);
 
-      tokens.forEach(tok => {
-        if (isLikelyName(tok)) teacherSet.add(tok);
-        else promoCandidates.push(tok);
+        // Split on separators to isolate chunks
+        const chunks = line
+          .split(/[;,]+|\s+[\\/|&+]\s+/)
+          .map(part => part.trim())
+          .filter(Boolean);
+
+        let foundTeacher = false;
+        chunks.forEach(chunk => {
+          const names = linePromoLike ? new Set<string>() : extractNamesFromText(chunk);
+          if (names.size > 0) {
+            foundTeacher = true;
+            names.forEach(n => teacherSet.add(n));
+          } else if (!linePromoLike) {
+            promoCandidates.push(chunk);
+          }
+        });
+
+        if (linePromoLike) {
+          promoCandidates.push(line);
+        } else if (!foundTeacher && chunks.length === 0) {
+          promoCandidates.push(line);
+        }
       });
 
-      // Try to extract inline matches when lines are folded or cluttered
-      if (teacherSet.size === 0) {
-        const inlineMatches = Array.from(desc.matchAll(nameInlineRegex)).map(m => m[0].trim());
-        inlineMatches.forEach(m => {
-          if (isLikelyName(m)) teacherSet.add(m);
-        });
-      }
+      const scorePromo = (line: string) => {
+        let score = 0;
+        if (/\d/.test(line)) score += 3;
+        if (/\b[MLD]\d\b/i.test(line)) score += 2;
+        if (/\b(master|licence|parcours|groupe|mineure|majeure|promo|promotion|alternant|classique|option|module|semestre|ue)\b/i.test(line)) score += 2;
+        if (line.trim().length > 0) score += 1;
+        return score;
+      };
 
-      const promoLine = promoCandidates.find(Boolean) || '';
+      const promoLine = promoCandidates
+        .slice()
+        .sort((a, b) => scorePromo(b) - scorePromo(a))[0] || '';
 
       // fallback for teachers
-      if (teacherSet.size === 0) teacherSet.add(promoLine || '—');
+      if (teacherSet.size === 0) teacherSet.add('—');
 
       const teachersNormalized = Array.from(teacherSet)
         .map(t => normalizeValue(normalizationRules.teachers, normalizationRules.hidden.teachers, t))
