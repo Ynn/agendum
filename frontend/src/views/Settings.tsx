@@ -45,6 +45,7 @@ export function Settings({
     const [showImport, setShowImport] = useState(false);
     const [qrValue, setQrValue] = useState<string | null>(null);
     const t = useT();
+    const repoUrl = 'https://github.com/Ynn/agendum';
 
     return (
         <div className="settings-view fade-in page-scroll" style={{ padding: isMobile ? '0.55rem' : '1rem', maxWidth: '100%', margin: '0 auto', height: '100%', overflowY: 'auto' }}>
@@ -81,9 +82,11 @@ export function Settings({
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isMobile ? '0.6rem' : '1rem' }}>
                     <h3 style={{ margin: 0, fontSize: isMobile ? '0.92rem' : undefined }}>{t.data_sources}</h3>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button className="btn" onClick={onOpenFix} style={{ fontSize: isMobile ? '0.74rem' : undefined, padding: isMobile ? '0.2rem 0.45rem' : undefined }}>
-                            {t.fix}
-                        </button>
+                        {!isMobile && (
+                            <button className="btn" onClick={onOpenFix} style={{ fontSize: isMobile ? '0.74rem' : undefined, padding: isMobile ? '0.2rem 0.45rem' : undefined }}>
+                                {t.fix}
+                            </button>
+                        )}
                         <button onClick={() => setShowImport(true)} className="btn btn-primary" style={{ fontSize: isMobile ? '0.74rem' : undefined, padding: isMobile ? '0.2rem 0.45rem' : undefined }}>
                             {t.import_new_source}
                         </button>
@@ -147,6 +150,34 @@ export function Settings({
                             {t.purge_all}
                         </button>
                     </div>
+                </div>
+            </section>
+
+            <section className="card" style={{ padding: isMobile ? '0.8rem' : '1.5rem', marginTop: '0.7rem' }}>
+                <h3 style={{ marginTop: 0, fontSize: isMobile ? '0.92rem' : undefined }}>{t.about}</h3>
+                <div style={{ display: 'grid', gap: '0.45rem' }}>
+                    <p style={{ color: 'var(--text-muted)', fontSize: isMobile ? '0.76rem' : '0.9rem', margin: 0 }}>
+                        {t.about_best_effort}
+                    </p>
+                    <p style={{ color: 'var(--text-muted)', fontSize: isMobile ? '0.76rem' : '0.9rem', margin: 0 }}>
+                        {t.about_not_official}
+                    </p>
+                    <p style={{ color: 'var(--text-muted)', fontSize: isMobile ? '0.76rem' : '0.9rem', margin: 0 }}>
+                        {t.about_verify}
+                    </p>
+                    <p style={{ color: 'var(--text-muted)', fontSize: isMobile ? '0.76rem' : '0.9rem', margin: 0 }}>
+                        {t.about_code_prefix}{' '}
+                        <a href={repoUrl} target="_blank" rel="noopener noreferrer">
+                            {repoUrl}
+                        </a>{' '}
+                        {t.about_code_suffix}
+                    </p>
+                    <p style={{ color: 'var(--text-muted)', fontSize: isMobile ? '0.76rem' : '0.9rem', margin: 0 }}>
+                        {t.about_recovery}
+                    </p>
+                    <p style={{ color: 'var(--text-muted)', fontSize: isMobile ? '0.76rem' : '0.9rem', margin: 0 }}>
+                        {t.about_proxy}
+                    </p>
                 </div>
             </section>
 

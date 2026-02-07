@@ -274,92 +274,96 @@ export function CourseExplorer({
         return courseEvents.filter(ev => isEventInScope(ev, breakdownScope));
     }, [courseEvents, breakdownScope, nowTs]);
 
-    // 3. Stats & Teacher/Promo Analysis
-    const stats = useMemo(() => {
-        let cm = 0, td = 0, tp = 0, project = 0, exam = 0, other = 0, total = 0;
-        const teacherMap = new Map<string, { cm: number, td: number, tp: number, project: number, exam: number, other: number, total: number }>();
-        const promoMap = new Map<string, { cm: number, td: number, tp: number, project: number, exam: number, other: number, total: number }>();
-        const roomMap = new Map<string, { cm: number, td: number, tp: number, project: number, exam: number, other: number, total: number }>();
+    type Totals = {
+        cm: number;
+        td: number;
+        tp: number;
+        project: number;
+        exam: number;
+        other: number;
+        total: number;
+    };
+
+    const makeTotals = (): Totals => ({
+        cm: 0,
+        td: 0,
+        tp: 0,
+        project: 0,
+        exam: 0,
+        other: 0,
+        total: 0
+    });
+
+    const getBucket = (typeRaw: string): 'cm' | 'td' | 'tp' | 'project' | 'exam' | 'other' => {
+        const type = typeRaw.toUpperCase();
+        if (type.includes('CM')) return 'cm';
+        if (type.includes('TD')) return 'td';
+        if (type.includes('TP')) return 'tp';
+        if (type.includes('PROJET') || type.includes('PROJECT')) return 'project';
+        if (type.includes('EXAM') || type.includes('DS') || type.includes('CC') || type.includes('CT')) return 'exam';
+        return 'other';
+    };
+
+    const addDuration = (entry: Totals, bucket: ReturnType<typeof getBucket>, dur: number) => {
+        if (bucket === 'cm') entry.cm += dur;
+        else if (bucket === 'td') entry.td += dur;
+        else if (bucket === 'tp') entry.tp += dur;
+        else if (bucket === 'project') entry.project += dur;
+        else if (bucket === 'exam') entry.exam += dur;
+        else entry.other += dur;
+
+        if (bucket === 'cm' || bucket === 'td' || bucket === 'tp' || bucket === 'project') {
+            entry.total += dur;
+        }
+    };
+
+    const summary = useMemo(() => {
+        const totals = makeTotals();
+        scopedCourseEvents.forEach(ev => {
+            const dur = ev.duration_hours || 0;
+            const bucket = getBucket(ev.type_ || '');
+            addDuration(totals, bucket, dur);
+        });
+        return totals;
+    }, [scopedCourseEvents]);
+
+    const activeBreakdown = useMemo(() => {
+        if (tab !== 'teachers' && tab !== 'promos' && tab !== 'rooms') return [] as Array<[string, Totals]>;
+
+        const map = new Map<string, Totals>();
+        const addForKey = (key: string, bucket: ReturnType<typeof getBucket>, dur: number) => {
+            if (!map.has(key)) map.set(key, makeTotals());
+            addDuration(map.get(key)!, bucket, dur);
+        };
 
         scopedCourseEvents.forEach(ev => {
             const dur = ev.duration_hours || 0;
-            const type = (ev.type_ || "").toUpperCase();
-
-            // Stats
-            let bucket: 'cm' | 'td' | 'tp' | 'project' | 'exam' | 'other' = 'other';
-            if (type.includes("CM")) bucket = 'cm';
-            else if (type.includes("TD")) bucket = 'td';
-            else if (type.includes("TP")) bucket = 'tp';
-            else if (type.includes("PROJET") || type.includes("PROJECT")) bucket = 'project';
-            else if (type.includes("EXAM") || type.includes("DS") || type.includes("CC") || type.includes("CT")) bucket = 'exam';
-            else bucket = 'other';
-
-            if (bucket === 'cm') cm += dur;
-            else if (bucket === 'td') td += dur;
-            else if (bucket === 'tp') tp += dur;
-            else if (bucket === 'project') project += dur;
-            else if (bucket === 'exam') exam += dur;
-            else other += dur;
-
-            if (bucket === 'cm' || bucket === 'td' || bucket === 'tp' || bucket === 'project') {
-                total += dur;
+            const bucket = getBucket(ev.type_ || '');
+            if (tab === 'teachers') {
+                const teacherNames = splitTeachers((ev as any).extractedTeacher);
+                const targets = teacherNames.length > 0 ? teacherNames : [t.unknown];
+                targets.forEach(name => addForKey(name, bucket, dur));
+                return;
             }
-
-            // Teacher/Promo Breakdown
-            const teacherNames = splitTeachers((ev as any).extractedTeacher);
-            const targetTeachers = teacherNames.length > 0 ? teacherNames : [t.unknown];
-            const promoNames = splitPromos((ev as any).promo);
-            const targetPromos = promoNames.length > 0 ? promoNames : [t.unknown];
-            const targetRooms = [ev.raw.location?.trim() || t.unknown];
-
-            const addDuration = (
-                map: Map<string, { cm: number, td: number, tp: number, project: number, exam: number, other: number, total: number }>,
-                key: string
-            ) => {
-                if (!map.has(key)) {
-                    map.set(key, { cm: 0, td: 0, tp: 0, project: 0, exam: 0, other: 0, total: 0 });
-                }
-                const entry = map.get(key)!;
-                if (bucket === 'cm') entry.cm += dur;
-                else if (bucket === 'td') entry.td += dur;
-                else if (bucket === 'tp') entry.tp += dur;
-                else if (bucket === 'project') entry.project += dur;
-                else if (bucket === 'exam') entry.exam += dur;
-                else entry.other += dur;
-
-                if (bucket === 'cm' || bucket === 'td' || bucket === 'tp' || bucket === 'project') {
-                    entry.total += dur;
-                }
-            };
-
-            targetTeachers.forEach(name => addDuration(teacherMap, name));
-            targetPromos.forEach(name => addDuration(promoMap, name));
-            targetRooms.forEach(name => addDuration(roomMap, name));
+            if (tab === 'promos') {
+                const promoNames = splitPromos((ev as any).promo);
+                const targets = promoNames.length > 0 ? promoNames : [t.unknown];
+                targets.forEach(name => addForKey(name, bucket, dur));
+                return;
+            }
+            addForKey(ev.raw.location?.trim() || t.unknown, bucket, dur);
         });
 
-        const byTotalDesc = (
-            a: [string, { total: number }],
-            b: [string, { total: number }]
-        ) => b[1].total - a[1].total;
+        return Array.from(map.entries()).sort((a, b) => b[1].total - a[1].total);
+    }, [scopedCourseEvents, tab, t.unknown]);
 
-        return {
-            cm,
-            td,
-            tp,
-            project,
-            exam,
-            other,
-            total,
-            teachers: Array.from(teacherMap.entries()).sort(byTotalDesc),
-            promos: Array.from(promoMap.entries()).sort(byTotalDesc),
-            rooms: Array.from(roomMap.entries()).sort(byTotalDesc)
-        };
-    }, [scopedCourseEvents, t]);
+    // Get color for selected subject
+    const subjectColors = selectedSubject ? getSubjectColor(selectedSubject) : null;
 
     // Calendar Events Format
     const calendarEvents = useMemo(() => {
+        const colors = subjectColors ?? getSubjectColor(selectedSubject);
         return scopedCourseEvents.map(ev => {
-            const colors = getSubjectColor(selectedSubject);
             return {
                 title: `${ev.type_} - ${ev.raw.location || ''}`,
                 start: ev.start_iso,
@@ -373,10 +377,7 @@ export function CourseExplorer({
                 }
             };
         });
-    }, [scopedCourseEvents, selectedSubject]);
-
-    // Get color for selected subject
-    const subjectColors = selectedSubject ? getSubjectColor(selectedSubject) : null;
+    }, [scopedCourseEvents, selectedSubject, subjectColors]);
 
     if (isMobile) {
         return (
@@ -524,35 +525,35 @@ export function CourseExplorer({
                                     <span style={{ fontSize: '1rem' }}>⏱️</span>
                                     <div>
                                         <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.total_label}</div>
-                                        <div style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-color)' }}>{stats.total.toFixed(1)}h</div>
+                                        <div style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-color)' }}>{summary.total.toFixed(1)}h</div>
                                     </div>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                                     <span style={{ fontSize: '1rem' }}>📖</span>
                                     <div>
                                         <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>CM</div>
-                                        <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#1e40af' }}>{stats.cm.toFixed(1)}h</div>
+                                        <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#1e40af' }}>{summary.cm.toFixed(1)}h</div>
                                     </div>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                                     <span style={{ fontSize: '1rem' }}>✏️</span>
                                     <div>
                                         <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TD</div>
-                                        <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#166534' }}>{stats.td.toFixed(1)}h</div>
+                                        <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#166534' }}>{summary.td.toFixed(1)}h</div>
                                     </div>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                                     <span style={{ fontSize: '1rem' }}>🔬</span>
                                     <div>
                                         <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TP</div>
-                                        <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#374151' }}>{stats.tp.toFixed(1)}h</div>
+                                        <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#374151' }}>{summary.tp.toFixed(1)}h</div>
                                     </div>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                                     <span style={{ fontSize: '1rem' }}>🧩</span>
                                     <div>
                                         <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.project}</div>
-                                        <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#7c3aed' }}>{stats.project.toFixed(1)}h</div>
+                                        <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#7c3aed' }}>{summary.project.toFixed(1)}h</div>
                                     </div>
                                 </div>
                                 <div
@@ -730,7 +731,7 @@ export function CourseExplorer({
 
                             {tab === 'teachers' && (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                    {stats.teachers.map(([name, s]) => (
+                                    {activeBreakdown.map(([name, s]) => (
                                         <div key={name} className="card" style={{ padding: '0.45rem 0.55rem' }}>
                                             <div style={{ fontWeight: 700, fontSize: '0.84rem', marginBottom: '0.25rem' }}>{name}</div>
                                             <div style={{ fontSize: '0.76rem', color: '#475569' }}>
@@ -743,7 +744,7 @@ export function CourseExplorer({
 
                             {tab === 'promos' && (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                    {stats.promos.map(([name, s]) => (
+                                    {activeBreakdown.map(([name, s]) => (
                                         <div key={name} className="card" style={{ padding: '0.45rem 0.55rem' }}>
                                             <div style={{ fontWeight: 700, fontSize: '0.84rem', marginBottom: '0.25rem' }}>{name}</div>
                                             <div style={{ fontSize: '0.76rem', color: '#475569' }}>
@@ -756,7 +757,7 @@ export function CourseExplorer({
 
                             {tab === 'rooms' && (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                    {stats.rooms.map(([name, s]) => (
+                                    {activeBreakdown.map(([name, s]) => (
                                         <div key={name} className="card" style={{ padding: '0.45rem 0.55rem' }}>
                                             <div style={{ fontWeight: 700, fontSize: '0.84rem', marginBottom: '0.25rem' }}>{name}</div>
                                             <div style={{ fontSize: '0.76rem', color: '#475569' }}>
@@ -993,35 +994,35 @@ export function CourseExplorer({
                                     <span style={{ fontSize: '1rem' }}>⏱️</span>
                                     <div>
                                         <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.total_label}</div>
-                                        <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-color)' }}>{stats.total.toFixed(1)}h</div>
+                                        <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-color)' }}>{summary.total.toFixed(1)}h</div>
                                     </div>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                                     <span style={{ fontSize: '1rem' }}>📖</span>
                                     <div>
                                         <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>CM</div>
-                                        <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1e40af' }}>{stats.cm.toFixed(1)}h</div>
+                                        <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1e40af' }}>{summary.cm.toFixed(1)}h</div>
                                     </div>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                                     <span style={{ fontSize: '1rem' }}>✏️</span>
                                     <div>
                                         <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TD</div>
-                                        <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#166534' }}>{stats.td.toFixed(1)}h</div>
+                                        <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#166534' }}>{summary.td.toFixed(1)}h</div>
                                     </div>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                                     <span style={{ fontSize: '1rem' }}>🔬</span>
                                     <div>
                                         <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TP</div>
-                                        <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#374151' }}>{stats.tp.toFixed(1)}h</div>
+                                        <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#374151' }}>{summary.tp.toFixed(1)}h</div>
                                     </div>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                                     <span style={{ fontSize: '1rem' }}>🧩</span>
                                     <div>
                                         <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.project}</div>
-                                        <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#7c3aed' }}>{stats.project.toFixed(1)}h</div>
+                                        <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#7c3aed' }}>{summary.project.toFixed(1)}h</div>
                                     </div>
                                 </div>
                                 <div
@@ -1214,7 +1215,7 @@ export function CourseExplorer({
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {stats.teachers.map(([name, s]) => (
+                                            {activeBreakdown.map(([name, s]) => (
                                                 <tr key={name} style={{ borderBottom: '1px solid var(--border-color)' }}>
                                                     <td style={{ padding: '0.8rem', fontWeight: 600, fontSize: '0.95rem' }}>{name}</td>
                                                     <td style={{ padding: '0.8rem', color: '#1e40af', fontFamily: 'var(--font-mono)' }}>{s.cm.toFixed(1)}h</td>
@@ -1250,7 +1251,7 @@ export function CourseExplorer({
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {stats.promos.map(([name, s]) => (
+                                            {activeBreakdown.map(([name, s]) => (
                                                 <tr key={name} style={{ borderBottom: '1px solid var(--border-color)' }}>
                                                     <td style={{ padding: '0.8rem', fontWeight: 600, fontSize: '0.95rem' }}>{name}</td>
                                                     <td style={{ padding: '0.8rem', color: '#1e40af', fontFamily: 'var(--font-mono)' }}>{s.cm.toFixed(1)}h</td>
@@ -1283,7 +1284,7 @@ export function CourseExplorer({
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {stats.rooms.map(([name, s]) => (
+                                            {activeBreakdown.map(([name, s]) => (
                                                 <tr key={name} style={{ borderBottom: '1px solid var(--border-color)' }}>
                                                     <td style={{ padding: '0.8rem', fontWeight: 600, fontSize: '0.95rem' }}>{name}</td>
                                                     <td style={{ padding: '0.8rem', color: '#1e40af', fontFamily: 'var(--font-mono)' }}>{s.cm.toFixed(1)}h</td>

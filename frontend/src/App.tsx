@@ -1145,9 +1145,6 @@ export default function App() {
                 gap: '0.5rem',
                 flexWrap: 'wrap'
               }}>
-                <button className="btn" style={{ padding: '0.24rem 0.45rem', fontSize: '0.75rem' }} onClick={() => setShowFilters(true)}>
-                  {t.filters}
-                </button>
                 <button className="btn" style={{ padding: '0.24rem 0.45rem', fontSize: '0.75rem' }} onClick={() => setView('settings')}>
                   {t.settings}
                 </button>

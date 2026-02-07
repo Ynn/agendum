@@ -284,85 +284,89 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false, on
                 </div>
             </div>
 
-            <div style={{ fontSize: isMobile ? '0.68rem' : '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0.1rem 0 0.35rem 0.15rem', fontWeight: 600 }}>
-                {lang === 'fr' ? 'Total de tous les services affichés' : 'Total of all displayed services'}
-            </div>
-            <div className="card" style={{ padding: isMobile ? '0.4rem 0.5rem' : '0.55rem 0.75rem', marginBottom: '0.6rem' }}>
-                <div style={{
-                    display: 'flex',
-                    gap: isMobile ? '0.7rem' : '1.1rem',
-                    flexWrap: 'wrap',
-                    padding: isMobile ? '0.4rem 0.5rem' : '0.55rem 0.7rem',
-                    background: 'var(--card-bg)',
-                    borderRadius: 'var(--radius)',
-                    boxShadow: 'var(--shadow-xs)'
-                }}>
-                    <div style={{
-                        display: 'flex',
-                        gap: isMobile ? '0.6rem' : '0.35rem',
-                        flexWrap: 'wrap',
-                        width: isMobile ? '100%' : 'auto'
-                    }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                            <span style={{ fontSize: '1rem' }}>⏱️</span>
-                            <div>
-                                <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.total_core_label}</div>
-                                <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-color)' }}>{summary.totalCore.toFixed(1)}h</div>
+            {teacherStats.length > 1 && (
+                <>
+                    <div style={{ fontSize: isMobile ? '0.68rem' : '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0.1rem 0 0.35rem 0.15rem', fontWeight: 600 }}>
+                        {lang === 'fr' ? 'Total de tous les services affichés' : 'Total of all displayed services'}
+                    </div>
+                    <div className="card" style={{ padding: isMobile ? '0.4rem 0.5rem' : '0.55rem 0.75rem', marginBottom: '0.6rem' }}>
+                        <div style={{
+                            display: 'flex',
+                            gap: isMobile ? '0.7rem' : '1.1rem',
+                            flexWrap: 'wrap',
+                            padding: isMobile ? '0.4rem 0.5rem' : '0.55rem 0.7rem',
+                            background: 'var(--card-bg)',
+                            borderRadius: 'var(--radius)',
+                            boxShadow: 'var(--shadow-xs)'
+                        }}>
+                            <div style={{
+                                display: 'flex',
+                                gap: isMobile ? '0.6rem' : '0.35rem',
+                                flexWrap: 'wrap',
+                                width: isMobile ? '100%' : 'auto'
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                    <span style={{ fontSize: '1rem' }}>⏱️</span>
+                                    <div>
+                                        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.total_core_label}</div>
+                                        <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-color)' }}>{summary.totalCore.toFixed(1)}h</div>
+                                    </div>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                    <span style={{ fontSize: '1rem' }}>∑</span>
+                                    <div>
+                                        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.total_with_project_label}</div>
+                                        <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-color)' }}>{summary.totalTeaching.toFixed(1)}h</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                <span style={{ fontSize: '1rem' }}>📖</span>
+                                <div>
+                                    <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>CM</div>
+                                    <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1e40af' }}>{summary.cm.toFixed(1)}h</div>
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                <span style={{ fontSize: '1rem' }}>✏️</span>
+                                <div>
+                                    <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TD</div>
+                                    <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#166534' }}>{summary.td.toFixed(1)}h</div>
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                <span style={{ fontSize: '1rem' }}>🔬</span>
+                                <div>
+                                    <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TP</div>
+                                    <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#374151' }}>{summary.tp.toFixed(1)}h</div>
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                <span style={{ fontSize: '1rem' }}>🧩</span>
+                                <div>
+                                    <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.project}</div>
+                                    <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#7c3aed' }}>{summary.project.toFixed(1)}h</div>
+                                </div>
+                            </div>
+                            <div style={{
+                                marginLeft: 'auto',
+                                minWidth: isMobile ? '100%' : '260px',
+                                color: 'var(--text-muted)',
+                                fontSize: isMobile ? '0.68rem' : '0.74rem',
+                                borderLeft: isMobile ? '0' : '1px solid var(--border-color)',
+                                paddingLeft: isMobile ? '0' : '0.8rem'
+                            }}>
+                                <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{lang === 'fr' ? 'Non compté' : 'Not counted'}</div>
+                                <div style={{ display: 'flex', gap: '0.7rem', flexWrap: 'wrap' }}>
+                                    <div>🧪 {t.exam}: {summary.exam.toFixed(1)}h</div>
+                                    <div>🗓️ {t.reunion}: {summary.reunion.toFixed(1)}h</div>
+                                    <div>📌 {t.other}: {summary.other.toFixed(1)}h</div>
+                                </div>
                             </div>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                            <span style={{ fontSize: '1rem' }}>∑</span>
-                            <div>
-                                <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.total_with_project_label}</div>
-                                <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-color)' }}>{summary.totalTeaching.toFixed(1)}h</div>
-                            </div>
-                        </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                        <span style={{ fontSize: '1rem' }}>📖</span>
-                        <div>
-                            <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>CM</div>
-                            <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1e40af' }}>{summary.cm.toFixed(1)}h</div>
-                        </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                        <span style={{ fontSize: '1rem' }}>✏️</span>
-                        <div>
-                            <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TD</div>
-                            <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#166534' }}>{summary.td.toFixed(1)}h</div>
-                        </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                        <span style={{ fontSize: '1rem' }}>🔬</span>
-                        <div>
-                            <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TP</div>
-                            <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#374151' }}>{summary.tp.toFixed(1)}h</div>
-                        </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                        <span style={{ fontSize: '1rem' }}>🧩</span>
-                        <div>
-                            <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.project}</div>
-                            <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#7c3aed' }}>{summary.project.toFixed(1)}h</div>
-                        </div>
-                    </div>
-                    <div style={{
-                        marginLeft: 'auto',
-                        minWidth: isMobile ? '100%' : '260px',
-                        color: 'var(--text-muted)',
-                        fontSize: isMobile ? '0.68rem' : '0.74rem',
-                        borderLeft: isMobile ? '0' : '1px solid var(--border-color)',
-                        paddingLeft: isMobile ? '0' : '0.8rem'
-                    }}>
-                        <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{lang === 'fr' ? 'Non compté' : 'Not counted'}</div>
-                        <div style={{ display: 'flex', gap: '0.7rem', flexWrap: 'wrap' }}>
-                            <div>🧪 {t.exam}: {summary.exam.toFixed(1)}h</div>
-                            <div>🗓️ {t.reunion}: {summary.reunion.toFixed(1)}h</div>
-                            <div>📌 {t.other}: {summary.other.toFixed(1)}h</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                </>
+            )}
 
             {/* Teacher Sections */}
             {teacherStats.length === 0 ? (
