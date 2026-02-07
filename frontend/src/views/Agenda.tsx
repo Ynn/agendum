@@ -3,7 +3,6 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import listPlugin from '@fullcalendar/list';
-// @ts-ignore
 import interactionPlugin from '@fullcalendar/interaction';
 import type { NormalizedEvent } from '../types';
 import frLocale from '@fullcalendar/core/locales/fr';
@@ -19,9 +18,11 @@ export function Agenda({
 }) {
     const lang = useLang();
     const t = useT();
+    const containerRef = useRef<HTMLDivElement | null>(null);
     const calendarRef = useRef<FullCalendar | null>(null);
     const swipeRef = useRef<{ x: number; y: number } | null>(null);
     const [currentView, setCurrentView] = useState('timeGridWeek');
+    const [currentTitle, setCurrentTitle] = useState('');
     const [weekValue, setWeekValue] = useState('');
     const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
     const [listRange, setListRange] = useState<{ start: string; end: string; enabled: boolean }>({
@@ -61,6 +62,39 @@ export function Agenda({
         const diff = target.valueOf() - firstThursday.valueOf();
         const week = 1 + Math.round(diff / 604800000);
         return `${target.getFullYear()}-W${pad2(week)}`;
+    };
+
+    const formatDayMonth = (date: Date) => {
+        const locale = lang === 'fr' ? 'fr-FR' : 'en-US';
+        const formatted = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' }).format(date);
+        return lang === 'fr' ? formatted.replace(',', '') : formatted;
+    };
+
+    const formatDayMonthYear = (date: Date) => {
+        const locale = lang === 'fr' ? 'fr-FR' : 'en-US';
+        const formatted = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric' }).format(date);
+        return lang === 'fr' ? formatted.replace(',', '') : formatted;
+    };
+
+    const buildTitle = (viewType: string, start: Date, end: Date, fallback: string) => {
+        if (viewType !== 'timeGridWeek' && viewType !== 'timeGridDay') return fallback;
+        const [, week = ''] = toWeekInputValue(start).split('-W');
+        if (!week) return fallback;
+        const prefix = `${lang === 'fr' ? 'S' : 'W'}${week}`;
+
+        if (viewType === 'timeGridWeek') {
+            const endInclusive = new Date(end);
+            endInclusive.setDate(endInclusive.getDate() - 1);
+            const startLabel = formatDayMonth(start);
+            const endLabel = formatDayMonth(endInclusive);
+            const year = endInclusive.getFullYear();
+            if (lang === 'fr') return `${prefix} : ${startLabel} – ${endLabel} ${year}`;
+            return `${prefix}: ${startLabel} - ${endLabel}, ${year}`;
+        }
+
+        const dayLabel = formatDayMonthYear(start);
+        if (lang === 'fr') return `${prefix} : ${dayLabel}`;
+        return `${prefix}: ${dayLabel}`;
     };
 
     const weekToDate = (value: string) => {
@@ -109,6 +143,19 @@ export function Agenda({
         api.gotoDate(listRange.start);
     }, [isListView, listRange.enabled, listRange.start]);
 
+    useEffect(() => {
+        if (isMobile || !currentTitle) return;
+        const applyTitle = () => {
+            const titleEl = containerRef.current?.querySelector('.fc-toolbar-title');
+            if (titleEl && titleEl.textContent !== currentTitle) {
+                titleEl.textContent = currentTitle;
+            }
+        };
+        applyTitle();
+        const raf = window.requestAnimationFrame(applyTitle);
+        return () => window.cancelAnimationFrame(raf);
+    }, [isMobile, currentTitle]);
+
     const listDays = useMemo(() => {
         if (!listRange.enabled || !listRange.start || !listRange.end) return 7;
         const days = diffDays(listRange.start, listRange.end) + 1;
@@ -120,6 +167,35 @@ export function Agenda({
         const endExclusive = addDays(listRange.end, 1);
         return { start: listRange.start, end: endExclusive };
     }, [isListView, listRange.enabled, listRange.start, listRange.end]);
+
+    const goPrev = () => {
+        if (isListView && listRange.enabled && listRange.start && listRange.end) {
+            const shift = diffDays(listRange.start, listRange.end) + 1;
+            const newStart = addDays(listRange.start, -shift);
+            const newEnd = addDays(listRange.end, -shift);
+            setListRange(prev => ({ ...prev, start: newStart, end: newEnd, enabled: true }));
+            return;
+        }
+        getApi()?.prev();
+    };
+
+    const goToday = () => {
+        getApi()?.today();
+        if (isListView) {
+            setListRange(prev => ({ ...prev, enabled: false }));
+        }
+    };
+
+    const goNext = () => {
+        if (isListView && listRange.enabled && listRange.start && listRange.end) {
+            const shift = diffDays(listRange.start, listRange.end) + 1;
+            const newStart = addDays(listRange.start, shift);
+            const newEnd = addDays(listRange.end, shift);
+            setListRange(prev => ({ ...prev, start: newStart, end: newEnd, enabled: true }));
+            return;
+        }
+        getApi()?.next();
+    };
 
     const eventsForView = useMemo(() => {
         if (!isListView || !listRange.enabled || !listRange.start || !listRange.end) return events;
@@ -169,6 +245,7 @@ export function Agenda({
 
     return (
         <div
+            ref={containerRef}
             className={`agenda-container ${isMobile ? 'agenda-mobile' : ''}`}
             style={{
             background: 'var(--card-bg)',
@@ -199,6 +276,38 @@ export function Agenda({
                 else api.prev();
             }}
         >
+            {isMobile && (
+                <div className="agenda-mobile-controls">
+                    <div className="agenda-mobile-nav">
+                        <div className="agenda-mobile-move">
+                            <button className="btn" onClick={goPrev} aria-label={lang === 'fr' ? 'Précédent' : 'Previous'}>&lt;</button>
+                            <button className="btn" onClick={goToday} aria-label={lang === 'fr' ? 'Aujourd’hui' : 'Today'}>○</button>
+                            <button className="btn" onClick={goNext} aria-label={lang === 'fr' ? 'Suivant' : 'Next'}>&gt;</button>
+                        </div>
+                        <div className="agenda-mobile-title">{currentTitle}</div>
+                        <div className="agenda-mobile-views">
+                            <button
+                                className={`btn agenda-mobile-view-btn ${currentView === 'timeGridDay' ? 'active' : ''}`}
+                                onClick={() => getApi()?.changeView('timeGridDay')}
+                            >
+                                {lang === 'fr' ? 'Jour' : 'Day'}
+                            </button>
+                            <button
+                                className={`btn agenda-mobile-view-btn ${currentView === 'timeGridWeek' ? 'active' : ''}`}
+                                onClick={() => getApi()?.changeView('timeGridWeek')}
+                            >
+                                {lang === 'fr' ? 'Semaine' : 'Week'}
+                            </button>
+                            <button
+                                className={`btn agenda-mobile-view-btn ${currentView === 'dayGridMonth' ? 'active' : ''}`}
+                                onClick={() => getApi()?.changeView('dayGridMonth')}
+                            >
+                                {lang === 'fr' ? 'Mois' : 'Month'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             <FullCalendar
                 ref={calendarRef}
                 plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
@@ -208,10 +317,10 @@ export function Agenda({
                 }}
                 visibleRange={listVisibleRange}
                 stickyHeaderDates={false}
-                headerToolbar={{
-                    left: isMobile ? 'prev,next' : 'prev,next today',
+                headerToolbar={isMobile ? false : {
+                    left: 'prev,next today',
                     center: 'title',
-                    right: isMobile ? 'today,timeGridWeek,dayGridMonth' : 'timeGridDay,timeGridWeek,dayGridMonth,listRange'
+                    right: 'timeGridDay,timeGridWeek,dayGridMonth,listRange'
                 }}
                 buttonText={{
                     today: lang === 'fr' ? 'Aujourd’hui' : 'Today',
@@ -286,6 +395,8 @@ export function Agenda({
                     setCurrentView(prev => (prev === arg.view.type ? prev : arg.view.type));
                     const nextWeek = toWeekInputValue(arg.start);
                     setWeekValue(prev => (prev === nextWeek ? prev : nextWeek));
+                    const titleWithBadge = buildTitle(arg.view.type, arg.start, arg.end, arg.view.title);
+                    setCurrentTitle(prev => (prev === titleWithBadge ? prev : titleWithBadge));
                 }}
             />
 
@@ -294,38 +405,15 @@ export function Agenda({
                 <div className="agenda-nav-buttons">
                     <button
                         className="btn"
-                        onClick={() => {
-                            if (isListView && listRange.enabled && listRange.start && listRange.end) {
-                                const shift = diffDays(listRange.start, listRange.end) + 1;
-                                const newStart = addDays(listRange.start, -shift);
-                                const newEnd = addDays(listRange.end, -shift);
-                                setListRange(prev => ({ ...prev, start: newStart, end: newEnd, enabled: true }));
-                            } else {
-                                getApi()?.prev();
-                            }
-                        }}
+                        onClick={goPrev}
                     >◀</button>
                     <button
                         className="btn"
-                        onClick={() => {
-                            getApi()?.today();
-                            if (isListView) {
-                                setListRange(prev => ({ ...prev, enabled: false }));
-                            }
-                        }}
+                        onClick={goToday}
                     >{lang === 'fr' ? 'Aujourd’hui' : 'Today'}</button>
                     <button
                         className="btn"
-                        onClick={() => {
-                            if (isListView && listRange.enabled && listRange.start && listRange.end) {
-                                const shift = diffDays(listRange.start, listRange.end) + 1;
-                                const newStart = addDays(listRange.start, shift);
-                                const newEnd = addDays(listRange.end, shift);
-                                setListRange(prev => ({ ...prev, start: newStart, end: newEnd, enabled: true }));
-                            } else {
-                                getApi()?.next();
-                            }
-                        }}
+                        onClick={goNext}
                     >▶</button>
                 </div>
                 {!isListView && (

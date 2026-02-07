@@ -8,9 +8,9 @@ interface Props {
 }
 
 export function SearchResults({ events, query, isMobile = false }: Props) {
-    if (!query) return null;
     const t = useT();
     const lang = useLang();
+    if (!query) return null;
 
     const formatDate = (d?: Date) => {
         if (!d) return '—';

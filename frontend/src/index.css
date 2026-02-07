@@ -703,6 +703,65 @@ th {
   border: 1px solid var(--border-color);
 }
 
+.agenda-mobile-controls {
+  display: flex;
+  margin-bottom: 0.42rem;
+}
+
+.agenda-mobile-nav {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  gap: 0.22rem;
+}
+
+.agenda-mobile-move {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.22rem;
+  flex-shrink: 0;
+}
+
+.agenda-mobile-nav .btn {
+  min-width: 1.7rem;
+  padding: 0.18rem 0.34rem;
+  font-size: 0.7rem;
+}
+
+.agenda-mobile-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-left: 0.18rem;
+  margin-right: 0.2rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.agenda-mobile-views {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.22rem;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+}
+
+.agenda-mobile-view-btn {
+  padding: 0.18rem 0.36rem;
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.agenda-mobile-view-btn.active {
+  background: var(--primary-color);
+  color: #fff;
+  border-color: transparent;
+}
+
 @media (max-width: 640px) {
   .agenda-week-picker {
     width: 100%;

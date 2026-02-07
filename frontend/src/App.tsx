@@ -590,7 +590,7 @@ export default function App() {
 
   // 1. All events flat list (for Course Explorer & Stats & General Search)
   const allEvents = useMemo(() => {
-    const nameInlineRegex = /(?:[A-ZÀ-ÖØ-Ý][A-ZÀ-ÖØ-Ý'’\-]*\s+){1,3}[A-ZÀ-ÖØ-Ý][a-zà-öø-ÿ'’\-]+/gu;
+    const nameInlineRegex = /(?:[A-ZÀ-ÖØ-Ý][A-ZÀ-ÖØ-Ý'’-]*\s+){1,3}[A-ZÀ-ÖØ-Ý][a-zà-öø-ÿ'’-]+/gu;
 
     const normalizeDescription = (desc: string) =>
       desc
@@ -693,7 +693,7 @@ export default function App() {
       if (/\d/.test(cleaned)) return false;
       if (/(https?:\/\/|@)/i.test(cleaned)) return false;
       if (/\s[-–—/]\s/.test(cleaned)) return false;
-      if (/[<>\[\]{}()]/.test(cleaned)) return false;
+      if (/[<>{}()[\]]/.test(cleaned)) return false;
 
       const parts = cleaned.split(' ');
       if (parts.length < 2 || parts.length > 5) return false;
@@ -723,7 +723,7 @@ export default function App() {
       if (/\s/.test(trimmed)) return null;
       const cleaned = trimmed.replace(/^[^\p{L}]+|[^\p{L}]+$/gu, '');
       if (!cleaned) return null;
-      const m = /^([A-ZÀ-ÖØ-Ý'’\-]{2,})([A-ZÀ-ÖØ-Ý][a-zà-öø-ÿ'’\-]+)$/.exec(cleaned);
+      const m = /^([A-ZÀ-ÖØ-Ý'’-]{2,})([A-ZÀ-ÖØ-Ý][a-zà-öø-ÿ'’-]+)$/.exec(cleaned);
       if (!m) return null;
       return `${m[1]} ${m[2]}`;
     };
