@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import listPlugin from '@fullcalendar/list';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -155,21 +155,21 @@ export function CourseExplorer({
         });
     };
 
-    const splitTeachers = (value?: string) => {
+    const splitTeachers = useCallback((value?: string) => {
         if (!value) return [];
         return value
             .split(',')
             .map(t => t.trim())
             .filter(Boolean);
-    };
+    }, []);
 
-    const splitPromos = (value?: string) => {
+    const splitPromos = useCallback((value?: string) => {
         if (!value) return [];
         return value
             .split(',')
             .map(p => p.trim())
             .filter(Boolean);
-    };
+    }, []);
 
     const rawEventLabel = lang === 'fr' ? "Voir l'événement brut" : 'View raw event';
     const calendarViewOptions = [
@@ -181,7 +181,7 @@ export function CourseExplorer({
     const dayLetters = lang === 'fr'
         ? ['D', 'L', 'M', 'M', 'J', 'V', 'S']
         : ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-    const isEventInScope = (ev: NormalizedEvent, scope: 'total' | 'done' | 'todo') => {
+    const isEventInScope = useCallback((ev: NormalizedEvent, scope: 'total' | 'done' | 'todo') => {
         if (scope === 'total') return true;
         const start = (ev as any).start_date as Date | undefined;
         const end = (ev as any).end_date as Date | undefined;
@@ -195,7 +195,7 @@ export function CourseExplorer({
             return scope === 'done' ? startMs <= nowTs : startMs > nowTs;
         }
         return false;
-    };
+    }, [nowTs]);
     const lerp = (a: number, b: number, t: number) => Math.round(a + (b - a) * t);
     const mixRgb = (
         from: [number, number, number],
@@ -272,7 +272,7 @@ export function CourseExplorer({
     const scopedCourseEvents = useMemo(() => {
         if (breakdownScope === 'total') return courseEvents;
         return courseEvents.filter(ev => isEventInScope(ev, breakdownScope));
-    }, [courseEvents, breakdownScope, nowTs]);
+    }, [courseEvents, breakdownScope, isEventInScope]);
 
     type Totals = {
         cm: number;
@@ -284,7 +284,7 @@ export function CourseExplorer({
         total: number;
     };
 
-    const makeTotals = (): Totals => ({
+    const makeTotals = useCallback((): Totals => ({
         cm: 0,
         td: 0,
         tp: 0,
@@ -292,7 +292,7 @@ export function CourseExplorer({
         exam: 0,
         other: 0,
         total: 0
-    });
+    }), []);
 
     const getBucket = (typeRaw: string): 'cm' | 'td' | 'tp' | 'project' | 'exam' | 'other' => {
         const type = typeRaw.toUpperCase();
@@ -304,7 +304,7 @@ export function CourseExplorer({
         return 'other';
     };
 
-    const addDuration = (entry: Totals, bucket: ReturnType<typeof getBucket>, dur: number) => {
+    const addDuration = useCallback((entry: Totals, bucket: ReturnType<typeof getBucket>, dur: number) => {
         if (bucket === 'cm') entry.cm += dur;
         else if (bucket === 'td') entry.td += dur;
         else if (bucket === 'tp') entry.tp += dur;
@@ -315,7 +315,7 @@ export function CourseExplorer({
         if (bucket === 'cm' || bucket === 'td' || bucket === 'tp' || bucket === 'project') {
             entry.total += dur;
         }
-    };
+    }, []);
 
     const summary = useMemo(() => {
         const totals = makeTotals();
@@ -325,7 +325,7 @@ export function CourseExplorer({
             addDuration(totals, bucket, dur);
         });
         return totals;
-    }, [scopedCourseEvents]);
+    }, [scopedCourseEvents, makeTotals, addDuration]);
 
     const activeBreakdown = useMemo(() => {
         if (tab !== 'teachers' && tab !== 'promos' && tab !== 'rooms') return [] as Array<[string, Totals]>;
@@ -355,7 +355,7 @@ export function CourseExplorer({
         });
 
         return Array.from(map.entries()).sort((a, b) => b[1].total - a[1].total);
-    }, [scopedCourseEvents, tab, t.unknown]);
+    }, [scopedCourseEvents, tab, t.unknown, splitTeachers, splitPromos, makeTotals, addDuration]);
 
     // Get color for selected subject
     const subjectColors = selectedSubject ? getSubjectColor(selectedSubject) : null;

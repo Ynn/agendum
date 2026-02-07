@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import type { NormalizedEvent } from '../types';
 import { useLang, useT } from '../i18n';
 
@@ -34,23 +34,25 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false, on
     const [serviceScope, setServiceScope] = useState<'total' | 'done' | 'todo'>('total');
     const [nowTs, setNowTs] = useState(() => Date.now());
 
-    const splitTeacherNames = (value?: string) => {
+    const splitTeacherNames = useCallback((value?: string) => {
         if (!value) return [];
         return value
             .split(',')
             .map(v => v.trim())
             .filter(Boolean);
-    };
+    }, []);
 
-    const isUnknownTeacherToken = (value: string) => {
+    const isUnknownTeacherToken = useCallback((value: string) => {
         const trimmed = value.trim();
         if (!trimmed) return true;
         if (trimmed === '—') return true;
         const lower = trimmed.toLowerCase();
         return lower === 'unknown teacher' || lower === t.unknown_teacher.toLowerCase();
-    };
+    }, [t.unknown_teacher]);
 
-    const unknownTeacherLabel = selectedTeacher ? '—' : t.unknown_teacher;
+    const unknownTeacherLabel = useMemo(() => (
+        selectedTeacher ? '—' : t.unknown_teacher
+    ), [selectedTeacher, t.unknown_teacher]);
 
     // Column Viz Toggles
     const [cols, setCols] = useState({
@@ -112,7 +114,7 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false, on
             }
             return false;
         });
-    }, [events, selectedTeacher, t, serviceScope, nowTs]);
+    }, [events, selectedTeacher, serviceScope, nowTs, splitTeacherNames, isUnknownTeacherToken]);
 
     const summary = useMemo(() => {
         const totals = { cm: 0, td: 0, tp: 0, project: 0, reunion: 0, exam: 0, other: 0 };
@@ -227,7 +229,7 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false, on
                 }
                 return b.grandTotal - a.grandTotal;
             });
-    }, [baseEvents, cols, showEmpty, t, selectedTeacher]);
+    }, [baseEvents, cols, showEmpty, t.unknown_subject, selectedTeacher, splitTeacherNames, isUnknownTeacherToken, unknownTeacherLabel]);
 
     return (
         <div className="service-dashboard fade-in page-scroll" style={{ height: '100%', minHeight: 0, overflowY: 'auto', paddingRight: isMobile ? '0.15rem' : '0.25rem' }}>

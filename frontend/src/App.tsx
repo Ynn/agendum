@@ -23,6 +23,7 @@ import './index.css';
 const DB_NAME = 'agendum-db';
 const STORE_NAME = 'events';
 const DB_VERSION = 2;
+const CALENDAR_COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#6366f1'];
 
 const pad2 = (num: number) => num.toString().padStart(2, '0');
 
@@ -189,8 +190,6 @@ export default function App() {
   }, [view, courseSubject]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Colors for new calendars
-  const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#6366f1'];
   const t = strings[lang] ?? strings.en;
   const filtersActive = useMemo(() => {
     if (filters.dateStart || filters.dateEnd || filters.startTime || filters.endTime) return true;
@@ -220,18 +219,6 @@ export default function App() {
       setMobileMenuOpen(false);
     }
   }, [isMobile]);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        await init();
-        setIsWasmReady(true);
-      } catch (e) {
-        console.error('Failed to init WASM', e);
-      }
-      await loadState();
-    })();
-  }, []);
 
   useEffect(() => {
     try {
@@ -291,7 +278,7 @@ export default function App() {
   }, [selectedTeacher]);
 
   // Persistence Logic
-  const loadState = async () => {
+  const loadState = useCallback(async () => {
     try {
       const db = await getDB();
       const saved = await db.get(STORE_NAME, 'current_schedule');
@@ -314,7 +301,7 @@ export default function App() {
           // Legacy migration
           const legacyId = 'legacy';
           setCalendars([{
-            id: legacyId, name: 'Imported Schedule', color: colors[0], visible: true, includeInStats: true, events: saved as NormalizedEvent[]
+            id: legacyId, name: 'Imported Schedule', color: CALENDAR_COLORS[0], visible: true, includeInStats: true, events: saved as NormalizedEvent[]
           }]);
           setMainCalendarId(legacyId);
         } else {
@@ -347,9 +334,21 @@ export default function App() {
         console.error('Fallback state load failed', e2);
       }
     }
-  };
+  }, []);
 
-  const saveState = async (newCalendars: Calendar[], newMainId?: string) => {
+  useEffect(() => {
+    (async () => {
+      try {
+        await init();
+        setIsWasmReady(true);
+      } catch (e) {
+        console.error('Failed to init WASM', e);
+      }
+      await loadState();
+    })();
+  }, [loadState]);
+
+  const saveState = useCallback(async (newCalendars: Calendar[], newMainId?: string) => {
     try {
       const db = await getDB();
       await db.put(STORE_NAME, newCalendars, 'current_schedule');
@@ -363,9 +362,9 @@ export default function App() {
         console.error('Fallback state save failed', e2);
       }
     }
-  };
+  }, []);
 
-  const saveRules = async (rules: NormalizationRules) => {
+  const saveRules = useCallback(async (rules: NormalizationRules) => {
     try {
       const db = await getDB();
       await db.put(STORE_NAME, rules, 'normalization_rules');
@@ -377,13 +376,13 @@ export default function App() {
         console.error('Fallback rules save failed', e2);
       }
     }
-  };
+  }, []);
 
   useEffect(() => {
     saveRules(normalizationRules);
-  }, [normalizationRules]);
+  }, [normalizationRules, saveRules]);
 
-  const handleImport = (
+  const handleImport = useCallback((
     name: string,
     events: NormalizedEvent[],
     isService: boolean,
@@ -394,7 +393,7 @@ export default function App() {
     const newCal: Calendar = {
       id: newId,
       name: name,
-      color: colors[calendars.length % colors.length],
+      color: CALENDAR_COLORS[calendars.length % CALENDAR_COLORS.length],
       visible: calendars.length === 0,
       includeInStats: isService,
       events: events,
@@ -416,7 +415,7 @@ export default function App() {
     if (calendars.length === 0 && newMain) setMainCalendarId(newMain);
 
     saveState(updated, newMain || undefined);
-  };
+  }, [calendars, mainCalendarId, saveState]);
 
   const fetchRemoteCalendarEvents = useCallback(async (sourceUrl: string) => {
     const targetUrl = buildFetchUrlFromSource(sourceUrl);
@@ -507,7 +506,7 @@ export default function App() {
         return next;
       });
     }
-  }, [calendars, fetchRemoteCalendarEvents, refreshingIds]);
+  }, [calendars, fetchRemoteCalendarEvents, refreshingIds, saveState]);
 
   useEffect(() => {
     if (!isWasmReady) return;
@@ -910,7 +909,7 @@ export default function App() {
       .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
   }, [serviceEvents]);
 
-  const applyFilters = (sourceOverride?: FilterState['source']) => {
+  const applyFilters = useCallback((sourceOverride?: FilterState['source']) => {
     let result = allEvents;
     const source = sourceOverride ?? filters.source;
 
@@ -980,16 +979,16 @@ export default function App() {
     }
 
     return result;
-  };
+  }, [allEvents, filters, mainCalendarId]);
 
   // Filter Logic (Derived from allEvents)
-  const filteredEvents = useMemo(() => applyFilters(), [allEvents, filters, mainCalendarId]);
-  const courseEvents = useMemo(() => applyFilters('all'), [allEvents, filters, mainCalendarId]);
+  const filteredEvents = useMemo(() => applyFilters(), [applyFilters]);
+  const courseEvents = useMemo(() => applyFilters('all'), [applyFilters]);
 
   // Derived datasets for Views (Consume filteredEvents)
 
   // Agenda View: Visible Calendars + Filtered
-  const scheduleEvents = useMemo(() => applyFilters('visible'), [allEvents, filters, mainCalendarId]);
+  const scheduleEvents = useMemo(() => applyFilters('visible'), [applyFilters]);
 
   // Search Results uses `filteredEvents` directly
   // Service uses `serviceEvents` (independent from visibility)

@@ -9,6 +9,48 @@ import frLocale from '@fullcalendar/core/locales/fr';
 import { useLang, useT } from '../i18n';
 import { getSubjectColor } from '../utils/colors';
 
+const pad2 = (n: number) => n.toString().padStart(2, '0');
+const toDateInput = (date: Date) => `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+const parseYMD = (dateStr: string) => {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    if (!y || !m || !d) return null;
+    return new Date(y, m - 1, d);
+};
+const addDays = (dateStr: string, days: number) => {
+    const d = parseYMD(dateStr);
+    if (!d) return dateStr;
+    d.setDate(d.getDate() + days);
+    return toDateInput(d);
+};
+const diffDays = (start: string, end: string) => {
+    const s = parseYMD(start);
+    const e = parseYMD(end);
+    if (!s || !e) return 0;
+    const ms = e.getTime() - s.getTime();
+    return Math.round(ms / 86400000);
+};
+const toWeekInputValue = (date: Date) => {
+    const target = new Date(date.valueOf());
+    const dayNr = (date.getDay() + 6) % 7;
+    target.setDate(target.getDate() - dayNr + 3);
+    const firstThursday = new Date(target.getFullYear(), 0, 4);
+    const diff = target.valueOf() - firstThursday.valueOf();
+    const week = 1 + Math.round(diff / 604800000);
+    return `${target.getFullYear()}-W${pad2(week)}`;
+};
+const weekToDate = (value: string) => {
+    const [y, w] = value.split('-W');
+    const year = Number(y);
+    const week = Number(w);
+    if (!year || !week) return null;
+    const simple = new Date(year, 0, 1 + (week - 1) * 7);
+    const dow = simple.getDay();
+    const isoWeekStart = new Date(simple);
+    if (dow <= 4) isoWeekStart.setDate(simple.getDate() - simple.getDay() + 1);
+    else isoWeekStart.setDate(simple.getDate() + 8 - simple.getDay());
+    return isoWeekStart;
+};
+
 export function Agenda({
     events,
     isMobile = false
@@ -32,37 +74,6 @@ export function Agenda({
     });
 
     const getApi = () => calendarRef.current?.getApi();
-
-    const pad2 = (n: number) => n.toString().padStart(2, '0');
-    const toDateInput = (date: Date) => `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
-    const parseYMD = (dateStr: string) => {
-        const [y, m, d] = dateStr.split('-').map(Number);
-        if (!y || !m || !d) return null;
-        return new Date(y, m - 1, d);
-    };
-    const addDays = (dateStr: string, days: number) => {
-        const d = parseYMD(dateStr);
-        if (!d) return dateStr;
-        d.setDate(d.getDate() + days);
-        return toDateInput(d);
-    };
-    const diffDays = (start: string, end: string) => {
-        const s = parseYMD(start);
-        const e = parseYMD(end);
-        if (!s || !e) return 0;
-        const ms = e.getTime() - s.getTime();
-        return Math.round(ms / 86400000);
-    };
-
-    const toWeekInputValue = (date: Date) => {
-        const target = new Date(date.valueOf());
-        const dayNr = (date.getDay() + 6) % 7;
-        target.setDate(target.getDate() - dayNr + 3);
-        const firstThursday = new Date(target.getFullYear(), 0, 4);
-        const diff = target.valueOf() - firstThursday.valueOf();
-        const week = 1 + Math.round(diff / 604800000);
-        return `${target.getFullYear()}-W${pad2(week)}`;
-    };
 
     const formatDayMonth = (date: Date) => {
         const locale = lang === 'fr' ? 'fr-FR' : 'en-US';
@@ -95,19 +106,6 @@ export function Agenda({
         const dayLabel = formatDayMonthYear(start);
         if (lang === 'fr') return `${prefix} : ${dayLabel}`;
         return `${prefix}: ${dayLabel}`;
-    };
-
-    const weekToDate = (value: string) => {
-        const [y, w] = value.split('-W');
-        const year = Number(y);
-        const week = Number(w);
-        if (!year || !week) return null;
-        const simple = new Date(year, 0, 1 + (week - 1) * 7);
-        const dow = simple.getDay();
-        const isoWeekStart = new Date(simple);
-        if (dow <= 4) isoWeekStart.setDate(simple.getDate() - simple.getDay() + 1);
-        else isoWeekStart.setDate(simple.getDate() + 8 - simple.getDay());
-        return isoWeekStart;
     };
 
     const isListView = currentView.startsWith('list');
