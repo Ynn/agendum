@@ -25,8 +25,9 @@ export function CourseExplorer({
 }: Props) {
     const [subjectFilter, setSubjectFilter] = useState('');
     const [selectedCalendarId, setSelectedCalendarId] = useState('');
-    const [tab, setTab] = useState<'list' | 'calendar' | 'teachers' | 'promos'>('list');
+    const [tab, setTab] = useState<'list' | 'calendar' | 'teachers' | 'promos' | 'rooms'>('list');
     const [mobileCalendarView, setMobileCalendarView] = useState<'timeGridWeek' | 'dayGridMonth' | 'listWeek'>('timeGridWeek');
+    const [breakdownScope, setBreakdownScope] = useState<'total' | 'done' | 'todo'>('total');
     const [selectedEvent, setSelectedEvent] = useState<NormalizedEvent | null>(null);
     const [nowTs, setNowTs] = useState(() => Date.now());
     const lang = useLang();
@@ -77,6 +78,7 @@ export function CourseExplorer({
     useEffect(() => {
         if (!selectedSubject) return;
         setTab('list');
+        setBreakdownScope('total');
     }, [selectedSubject]);
 
     useEffect(() => {
@@ -179,6 +181,21 @@ export function CourseExplorer({
     const dayLetters = lang === 'fr'
         ? ['D', 'L', 'M', 'M', 'J', 'V', 'S']
         : ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    const isEventInScope = (ev: NormalizedEvent, scope: 'total' | 'done' | 'todo') => {
+        if (scope === 'total') return true;
+        const start = (ev as any).start_date as Date | undefined;
+        const end = (ev as any).end_date as Date | undefined;
+        const startMs = start?.getTime();
+        const endMs = end?.getTime();
+
+        if (typeof endMs === 'number' && Number.isFinite(endMs)) {
+            return scope === 'done' ? endMs <= nowTs : endMs > nowTs;
+        }
+        if (typeof startMs === 'number' && Number.isFinite(startMs)) {
+            return scope === 'done' ? startMs <= nowTs : startMs > nowTs;
+        }
+        return false;
+    };
     const lerp = (a: number, b: number, t: number) => Math.round(a + (b - a) * t);
     const mixRgb = (
         from: [number, number, number],
@@ -252,13 +269,19 @@ export function CourseExplorer({
         );
     };
 
+    const scopedCourseEvents = useMemo(() => {
+        if (breakdownScope === 'total') return courseEvents;
+        return courseEvents.filter(ev => isEventInScope(ev, breakdownScope));
+    }, [courseEvents, breakdownScope, nowTs]);
+
     // 3. Stats & Teacher/Promo Analysis
     const stats = useMemo(() => {
         let cm = 0, td = 0, tp = 0, project = 0, exam = 0, other = 0, total = 0;
         const teacherMap = new Map<string, { cm: number, td: number, tp: number, project: number, exam: number, other: number, total: number }>();
         const promoMap = new Map<string, { cm: number, td: number, tp: number, project: number, exam: number, other: number, total: number }>();
+        const roomMap = new Map<string, { cm: number, td: number, tp: number, project: number, exam: number, other: number, total: number }>();
 
-        courseEvents.forEach(ev => {
+        scopedCourseEvents.forEach(ev => {
             const dur = ev.duration_hours || 0;
             const type = (ev.type_ || "").toUpperCase();
 
@@ -282,11 +305,12 @@ export function CourseExplorer({
                 total += dur;
             }
 
-            // Teacher Extraction
+            // Teacher/Promo Breakdown
             const teacherNames = splitTeachers((ev as any).extractedTeacher);
             const targetTeachers = teacherNames.length > 0 ? teacherNames : [t.unknown];
             const promoNames = splitPromos((ev as any).promo);
             const targetPromos = promoNames.length > 0 ? promoNames : [t.unknown];
+            const targetRooms = [ev.raw.location?.trim() || t.unknown];
 
             const addDuration = (
                 map: Map<string, { cm: number, td: number, tp: number, project: number, exam: number, other: number, total: number }>,
@@ -310,6 +334,7 @@ export function CourseExplorer({
 
             targetTeachers.forEach(name => addDuration(teacherMap, name));
             targetPromos.forEach(name => addDuration(promoMap, name));
+            targetRooms.forEach(name => addDuration(roomMap, name));
         });
 
         const byTotalDesc = (
@@ -326,13 +351,14 @@ export function CourseExplorer({
             other,
             total,
             teachers: Array.from(teacherMap.entries()).sort(byTotalDesc),
-            promos: Array.from(promoMap.entries()).sort(byTotalDesc)
+            promos: Array.from(promoMap.entries()).sort(byTotalDesc),
+            rooms: Array.from(roomMap.entries()).sort(byTotalDesc)
         };
-    }, [courseEvents, t]);
+    }, [scopedCourseEvents, t]);
 
     // Calendar Events Format
     const calendarEvents = useMemo(() => {
-        return courseEvents.map(ev => {
+        return scopedCourseEvents.map(ev => {
             const colors = getSubjectColor(selectedSubject);
             return {
                 title: `${ev.type_} - ${ev.raw.location || ''}`,
@@ -347,7 +373,7 @@ export function CourseExplorer({
                 }
             };
         });
-    }, [courseEvents, selectedSubject]);
+    }, [scopedCourseEvents, selectedSubject]);
 
     // Get color for selected subject
     const subjectColors = selectedSubject ? getSubjectColor(selectedSubject) : null;
@@ -476,13 +502,15 @@ export function CourseExplorer({
                                     📅 {t.calendar}
                                 </button>
                                 <button className={`btn ${tab === 'teachers' ? 'btn-primary' : ''}`} onClick={() => setTab('teachers')} style={{ fontSize: '0.74rem', padding: '0.2rem 0.4rem' }}>
-                                    👥 {t.by_teacher}
+                                    👥 {t.by_teacher_short}
                                 </button>
                                 <button className={`btn ${tab === 'promos' ? 'btn-primary' : ''}`} onClick={() => setTab('promos')} style={{ fontSize: '0.74rem', padding: '0.2rem 0.4rem' }}>
-                                    🎓 {t.by_promo}
+                                    🎓 {t.by_promo_short}
+                                </button>
+                                <button className={`btn ${tab === 'rooms' ? 'btn-primary' : ''}`} onClick={() => setTab('rooms')} style={{ fontSize: '0.74rem', padding: '0.2rem 0.4rem' }}>
+                                    🏫 {t.by_room_short}
                                 </button>
                             </div>
-
                             <div style={{
                                 display: 'flex',
                                 gap: '0.8rem',
@@ -527,13 +555,41 @@ export function CourseExplorer({
                                         <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#7c3aed' }}>{stats.project.toFixed(1)}h</div>
                                     </div>
                                 </div>
+                                <div
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.35rem',
+                                        flexWrap: 'wrap',
+                                        marginLeft: 0,
+                                        width: '100%',
+                                        flexBasis: '100%'
+                                    }}
+                                >
+                                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>{t.service_period_label}</span>
+                                    {([
+                                        { key: 'total', label: t.service_period_total },
+                                        { key: 'done', label: t.service_period_done },
+                                        { key: 'todo', label: t.service_period_todo }
+                                    ] as const).map(opt => (
+                                        <button
+                                            key={opt.key}
+                                            type="button"
+                                            className={`btn ${breakdownScope === opt.key ? 'btn-primary' : ''}`}
+                                            onClick={() => setBreakdownScope(opt.key)}
+                                            style={{ fontSize: '0.7rem', padding: '0.15rem 0.4rem' }}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         </div>
 
                         <div style={{ padding: '0.45rem', minHeight: 0 }}>
                             {tab === 'list' && (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                    {courseEvents.map((ev, i) => {
+                                    {scopedCourseEvents.map((ev, i) => {
                                         const promoText = ((ev as any).promo || '—') as string;
                                         const borderColor = getListBorderColor(ev, subjectColors?.bg || 'var(--primary-color)');
                                         const timeAccentColor = getTimeAccentColor((ev as any).start_date);
@@ -688,6 +744,19 @@ export function CourseExplorer({
                             {tab === 'promos' && (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                     {stats.promos.map(([name, s]) => (
+                                        <div key={name} className="card" style={{ padding: '0.45rem 0.55rem' }}>
+                                            <div style={{ fontWeight: 700, fontSize: '0.84rem', marginBottom: '0.25rem' }}>{name}</div>
+                                            <div style={{ fontSize: '0.76rem', color: '#475569' }}>
+                                                CM {s.cm.toFixed(1)}h • TD {s.td.toFixed(1)}h • TP {s.tp.toFixed(1)}h • {t.project} {s.project.toFixed(1)}h • {t.total} {s.total.toFixed(1)}h • {t.exam} {s.exam.toFixed(1)}h • {t.other} {s.other.toFixed(1)}h
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {tab === 'rooms' && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    {stats.rooms.map(([name, s]) => (
                                         <div key={name} className="card" style={{ padding: '0.45rem 0.55rem' }}>
                                             <div style={{ fontWeight: 700, fontSize: '0.84rem', marginBottom: '0.25rem' }}>{name}</div>
                                             <div style={{ fontSize: '0.76rem', color: '#475569' }}>
@@ -906,9 +975,11 @@ export function CourseExplorer({
                                     <button className={`btn ${tab === 'promos' ? 'btn-primary' : ''}`} onClick={() => setTab('promos')} style={{ fontSize: isTablet ? '0.68rem' : '0.75rem', padding: isTablet ? '0.17rem 0.34rem' : '0.2rem 0.45rem' }}>
                                         🎓 {t.by_promo}
                                     </button>
+                                    <button className={`btn ${tab === 'rooms' ? 'btn-primary' : ''}`} onClick={() => setTab('rooms')} style={{ fontSize: isTablet ? '0.68rem' : '0.75rem', padding: isTablet ? '0.17rem 0.34rem' : '0.2rem 0.45rem' }}>
+                                        🏫 {t.by_room}
+                                    </button>
                                 </div>
                             </div>
-
                             <div style={{
                                 display: 'flex',
                                 gap: '0.9rem',
@@ -953,6 +1024,32 @@ export function CourseExplorer({
                                         <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#7c3aed' }}>{stats.project.toFixed(1)}h</div>
                                     </div>
                                 </div>
+                                <div
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.45rem',
+                                        flexWrap: 'wrap',
+                                        marginLeft: 'auto'
+                                    }}
+                                >
+                                    <span style={{ fontSize: isTablet ? '0.66rem' : '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>{t.service_period_label}</span>
+                                    {([
+                                        { key: 'total', label: t.service_period_total },
+                                        { key: 'done', label: t.service_period_done },
+                                        { key: 'todo', label: t.service_period_todo }
+                                    ] as const).map(opt => (
+                                        <button
+                                            key={opt.key}
+                                            type="button"
+                                            className={`btn ${breakdownScope === opt.key ? 'btn-primary' : ''}`}
+                                            onClick={() => setBreakdownScope(opt.key)}
+                                            style={{ fontSize: isTablet ? '0.66rem' : '0.72rem', padding: isTablet ? '0.16rem 0.34rem' : '0.2rem 0.42rem' }}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         </div>
 
@@ -974,7 +1071,7 @@ export function CourseExplorer({
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {courseEvents.map((ev, i) => {
+                                            {scopedCourseEvents.map((ev, i) => {
                                                 const borderColor = getListBorderColor(ev, subjectColors?.bg || 'var(--primary-color)');
                                                 const timeAccentColor = getTimeAccentColor((ev as any).start_date);
                                                 return (
@@ -1154,6 +1251,39 @@ export function CourseExplorer({
                                         </thead>
                                         <tbody>
                                             {stats.promos.map(([name, s]) => (
+                                                <tr key={name} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                                                    <td style={{ padding: '0.8rem', fontWeight: 600, fontSize: '0.95rem' }}>{name}</td>
+                                                    <td style={{ padding: '0.8rem', color: '#1e40af', fontFamily: 'var(--font-mono)' }}>{s.cm.toFixed(1)}h</td>
+                                                    <td style={{ padding: '0.8rem', color: '#166534', fontFamily: 'var(--font-mono)' }}>{s.td.toFixed(1)}h</td>
+                                                    <td style={{ padding: '0.8rem', color: '#92400e', fontFamily: 'var(--font-mono)' }}>{s.tp.toFixed(1)}h</td>
+                                                    <td style={{ padding: '0.8rem', color: '#7c3aed', fontFamily: 'var(--font-mono)' }}>{s.project.toFixed(1)}h</td>
+                                                    <td style={{ padding: '0.8rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>{s.total.toFixed(1)}h</td>
+                                                    <td style={{ padding: '0.8rem', color: '#b91c1c', fontFamily: 'var(--font-mono)' }}>{s.exam.toFixed(1)}h</td>
+                                                    <td style={{ padding: '0.8rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{s.other.toFixed(1)}h</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+
+                            {tab === 'rooms' && (
+                                <div>
+                                    <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
+                                        <thead>
+                                            <tr style={{ textAlign: 'left' }}>
+                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.location}</th>
+                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>CM</th>
+                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TD</th>
+                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TP</th>
+                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.project}</th>
+                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.total}</th>
+                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.exam}</th>
+                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.other}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {stats.rooms.map(([name, s]) => (
                                                 <tr key={name} style={{ borderBottom: '1px solid var(--border-color)' }}>
                                                     <td style={{ padding: '0.8rem', fontWeight: 600, fontSize: '0.95rem' }}>{name}</td>
                                                     <td style={{ padding: '0.8rem', color: '#1e40af', fontFamily: 'var(--font-mono)' }}>{s.cm.toFixed(1)}h</td>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { NormalizedEvent } from '../types';
 import { useLang, useT } from '../i18n';
 
@@ -31,6 +31,8 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false, on
     const t = useT();
     const lang = useLang();
     const showEmpty = false;
+    const [serviceScope, setServiceScope] = useState<'total' | 'done' | 'todo'>('total');
+    const [nowTs, setNowTs] = useState(() => Date.now());
 
     const splitTeacherNames = (value?: string) => {
         if (!value) return [];
@@ -74,17 +76,43 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false, on
     const compactHeadWide = isMobile ? { ...compactHead, minWidth: '6.5ch' } : compactHead;
     const compactCell = isMobile ? { padding: '0.42rem 0.35rem' } : {};
 
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const id = window.setInterval(() => setNowTs(Date.now()), 60000);
+        return () => window.clearInterval(id);
+    }, []);
+
     const baseEvents = useMemo(() => {
-        if (!selectedTeacher) return events;
-        const target = selectedTeacher.toLowerCase();
-        return events.filter(ev => {
-            const teacherStr = ((ev as any).extractedTeacher || '').toLowerCase();
-            const teacherTokens = splitTeacherNames(teacherStr);
-            const matchesSelected = teacherTokens.some(t => t.toLowerCase() === target);
-            const isUnknown = teacherTokens.length === 0 || teacherTokens.every(isUnknownTeacherToken);
-            return matchesSelected || isUnknown;
+        const teacherFiltered = !selectedTeacher
+            ? events
+            : (() => {
+                const target = selectedTeacher.toLowerCase();
+                return events.filter(ev => {
+                    const teacherStr = ((ev as any).extractedTeacher || '').toLowerCase();
+                    const teacherTokens = splitTeacherNames(teacherStr);
+                    const matchesSelected = teacherTokens.some(name => name.toLowerCase() === target);
+                    const isUnknown = teacherTokens.length === 0 || teacherTokens.every(isUnknownTeacherToken);
+                    return matchesSelected || isUnknown;
+                });
+            })();
+
+        if (serviceScope === 'total') return teacherFiltered;
+
+        return teacherFiltered.filter(ev => {
+            const start = (ev as any).start_date as Date | undefined;
+            const end = (ev as any).end_date as Date | undefined;
+            const startMs = start?.getTime();
+            const endMs = end?.getTime();
+
+            if (typeof endMs === 'number' && Number.isFinite(endMs)) {
+                return serviceScope === 'done' ? endMs <= nowTs : endMs > nowTs;
+            }
+            if (typeof startMs === 'number' && Number.isFinite(startMs)) {
+                return serviceScope === 'done' ? startMs <= nowTs : startMs > nowTs;
+            }
+            return false;
         });
-    }, [events, selectedTeacher, t]);
+    }, [events, selectedTeacher, t, serviceScope, nowTs]);
 
     const summary = useMemo(() => {
         const totals = { cm: 0, td: 0, tp: 0, project: 0, reunion: 0, exam: 0, other: 0 };
@@ -205,18 +233,52 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false, on
         <div className="service-dashboard fade-in page-scroll" style={{ height: '100%', minHeight: 0, overflowY: 'auto', paddingRight: isMobile ? '0.15rem' : '0.25rem' }}>
             {/* Controls */}
             <div className="card" style={{ padding: isMobile ? '0.4rem 0.5rem' : '0.55rem 0.75rem', marginBottom: '0.6rem', display: 'flex', flexWrap: 'wrap', gap: isMobile ? '0.5rem' : '0.8rem', alignItems: 'center' }}>
-                {selectedTeacher && (
-                    <div style={{ fontSize: isMobile ? '0.68rem' : '0.78rem', color: '#475569' }}>
-                        {t.teacher}: <strong>{selectedTeacher}</strong>
+                <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '0.5rem' : '0.8rem', flexWrap: 'wrap', flex: 1, minWidth: isMobile ? '100%' : 0 }}>
+                    {selectedTeacher && (
+                        <div style={{ fontSize: isMobile ? '0.68rem' : '0.78rem', color: '#475569' }}>
+                            {t.teacher}: <strong>{selectedTeacher}</strong>
+                        </div>
+                    )}
+                    <div>
+                        <div style={{ display: 'flex', gap: isMobile ? '0.35rem' : '0.55rem', flexWrap: 'wrap' }}>
+                            {colKeys.map(key => (
+                                <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.28rem', cursor: 'pointer', textTransform: 'uppercase', fontSize: isMobile ? '0.64rem' : '0.72rem' }}>
+                                    <input type="checkbox" checked={cols[key]} onChange={e => setCols({ ...cols, [key]: e.target.checked })} />
+                                    {colLabels[key]}
+                                </label>
+                            ))}
+                        </div>
                     </div>
-                )}
-                <div>
+                </div>
+                <div
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: isMobile ? '0.3rem' : '0.5rem',
+                        flexWrap: 'wrap',
+                        width: isMobile ? '100%' : 'auto',
+                        marginLeft: isMobile ? 0 : 'auto',
+                        justifyContent: isMobile ? 'flex-start' : 'flex-end'
+                    }}
+                >
+                    <span style={{ fontSize: isMobile ? '0.68rem' : '0.76rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                        {t.service_period_label}
+                    </span>
                     <div style={{ display: 'flex', gap: isMobile ? '0.35rem' : '0.55rem', flexWrap: 'wrap' }}>
-                        {colKeys.map(key => (
-                            <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.28rem', cursor: 'pointer', textTransform: 'uppercase', fontSize: isMobile ? '0.64rem' : '0.72rem' }}>
-                                <input type="checkbox" checked={cols[key]} onChange={e => setCols({ ...cols, [key]: e.target.checked })} />
-                                {colLabels[key]}
-                            </label>
+                        {([
+                            { key: 'total', label: t.service_period_total },
+                            { key: 'done', label: t.service_period_done },
+                            { key: 'todo', label: t.service_period_todo }
+                        ] as const).map(opt => (
+                            <button
+                                key={opt.key}
+                                type="button"
+                                className={`btn ${serviceScope === opt.key ? 'btn-primary' : ''}`}
+                                style={{ padding: isMobile ? '0.18rem 0.45rem' : '0.22rem 0.55rem', fontSize: isMobile ? '0.68rem' : '0.74rem' }}
+                                onClick={() => setServiceScope(opt.key)}
+                            >
+                                {opt.label}
+                            </button>
                         ))}
                     </div>
                 </div>
