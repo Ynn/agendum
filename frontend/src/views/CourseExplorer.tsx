@@ -28,6 +28,7 @@ export function CourseExplorer({
     const [tab, setTab] = useState<'list' | 'calendar' | 'teachers' | 'promos'>('list');
     const [mobileCalendarView, setMobileCalendarView] = useState<'timeGridWeek' | 'dayGridMonth' | 'listWeek'>('timeGridWeek');
     const [selectedEvent, setSelectedEvent] = useState<NormalizedEvent | null>(null);
+    const [nowTs, setNowTs] = useState(() => Date.now());
     const lang = useLang();
     const t = useT();
     const mobileCalendarRef = useRef<FullCalendar | null>(null);
@@ -77,6 +78,12 @@ export function CourseExplorer({
         if (!selectedSubject) return;
         setTab('list');
     }, [selectedSubject]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const id = window.setInterval(() => setNowTs(Date.now()), 60000);
+        return () => window.clearInterval(id);
+    }, []);
 
     // 2. Filter events for selected subject
     const courseEvents = useMemo(() => {
@@ -129,6 +136,14 @@ export function CourseExplorer({
         if (!d) return '—';
         return d.toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-US');
     };
+    const dayShort = lang === 'fr'
+        ? ['Di', 'Lu', 'Ma', 'Me', 'Je', 'Ve', 'Sa']
+        : ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+    const formatDateWithDay = (d?: Date) => {
+        if (!d) return '—';
+        const day = dayShort[d.getDay()] ?? '';
+        return `${day} ${formatDate(d)}`;
+    };
 
     const formatTime = (d?: Date) => {
         if (!d) return '—';
@@ -164,6 +179,49 @@ export function CourseExplorer({
     const dayLetters = lang === 'fr'
         ? ['D', 'L', 'M', 'M', 'J', 'V', 'S']
         : ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    const lerp = (a: number, b: number, t: number) => Math.round(a + (b - a) * t);
+    const mixRgb = (
+        from: [number, number, number],
+        to: [number, number, number],
+        t: number
+    ): [number, number, number] => [
+        lerp(from[0], to[0], t),
+        lerp(from[1], to[1], t),
+        lerp(from[2], to[2], t)
+    ];
+    const getTimeAccentColor = (start?: Date) => {
+        if (!start) return '#94a3b8';
+        const hour = start.getHours() + (start.getMinutes() / 60);
+        const morning = hour < 12;
+
+        const ratio = morning
+            ? (hour < 10 ? 0 : Math.min(1, (hour - 10) / 2))
+            : Math.min(1, Math.max(0, (hour - 12) / 6));
+
+        const indicatorRgb = morning
+            ? mixRgb([34, 197, 94], [22, 163, 74], ratio)
+            : mixRgb([217, 119, 6], [146, 64, 14], ratio);
+
+        return `rgb(${indicatorRgb[0]}, ${indicatorRgb[1]}, ${indicatorRgb[2]})`;
+    };
+    const getListBorderColor = (ev: NormalizedEvent, defaultColor: string) => {
+        const start = (ev as any).start_date as Date | undefined;
+        const end = (ev as any).end_date as Date | undefined;
+        if (!start || !end) return defaultColor;
+
+        const startMs = start.getTime();
+        const endMs = end.getTime();
+        if (endMs <= nowTs) return '#9ca3af'; // past
+        if (startMs <= nowTs && nowTs < endMs) return '#dc2626'; // ongoing
+
+        const now = new Date(nowTs);
+        const sameDay = start.getFullYear() === now.getFullYear()
+            && start.getMonth() === now.getMonth()
+            && start.getDate() === now.getDate();
+        if (sameDay) return '#f59e0b'; // today
+
+        return defaultColor; // future
+    };
 
     const renderEventModal = () => {
         if (!selectedEvent) return null;
@@ -182,7 +240,7 @@ export function CourseExplorer({
                         <button className="btn" onClick={() => setSelectedEvent(null)} style={{ padding: '0.2rem 0.6rem' }}>×</button>
                     </div>
                     <div className="event-modal-grid">
-                        <div><strong>{t.time}:</strong> {formatDate(start)} • {formatTime(start)} - {formatTime(end)}</div>
+                        <div><strong>{t.time}:</strong> {formatDateWithDay(start)} • {formatTime(start)} - {formatTime(end)}</div>
                         <div><strong>{t.location}:</strong> {selectedEvent.raw.location || '—'}</div>
                         <div><strong>{t.duration}:</strong> {selectedEvent.duration_hours}h</div>
                     </div>
@@ -477,8 +535,10 @@ export function CourseExplorer({
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                     {courseEvents.map((ev, i) => {
                                         const promoText = ((ev as any).promo || '—') as string;
+                                        const borderColor = getListBorderColor(ev, subjectColors?.bg || 'var(--primary-color)');
+                                        const timeAccentColor = getTimeAccentColor((ev as any).start_date);
                                         return (
-                                            <div key={i} className="card" style={{ padding: '0.5rem' }}>
+                                            <div key={i} className="card" style={{ padding: '0.5rem', borderLeft: `4px solid ${borderColor}` }}>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.4rem', marginBottom: '0.2rem' }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', minWidth: 0, flex: 1 }}>
                                                         <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem', minWidth: 0, flex: 1 }}>
@@ -517,7 +577,23 @@ export function CourseExplorer({
                                                     <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', flexShrink: 0 }}>{ev.duration_hours}h</span>
                                                 </div>
                                                 <div style={{ fontSize: '0.77rem', color: 'var(--text-secondary)' }}>
-                                                    {formatDate((ev as any).start_date)} • {formatTime((ev as any).start_date)}-{formatTime((ev as any).end_date)}
+                                                    {formatDateWithDay((ev as any).start_date)} •
+                                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', marginLeft: '0.35rem' }}>
+                                                        <span
+                                                            aria-hidden
+                                                            style={{
+                                                                width: '0.5rem',
+                                                                height: '0.5rem',
+                                                                borderRadius: '2px',
+                                                                background: timeAccentColor,
+                                                                display: 'inline-block',
+                                                                flexShrink: 0
+                                                            }}
+                                                        />
+                                                        <span>
+                                                            {formatTime((ev as any).start_date)}-{formatTime((ev as any).end_date)}
+                                                        </span>
+                                                    </span>
                                                 </div>
                                                 <div style={{ fontSize: '0.76rem', marginTop: '0.18rem' }}>{splitTeachers((ev as any).extractedTeacher).join(', ') || '—'}</div>
                                                 <div style={{ fontSize: '0.73rem', color: 'var(--text-muted)' }}>{ev.raw.location || '—'}</div>
@@ -898,7 +974,10 @@ export function CourseExplorer({
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {courseEvents.map((ev, i) => (
+                                            {courseEvents.map((ev, i) => {
+                                                const borderColor = getListBorderColor(ev, subjectColors?.bg || 'var(--primary-color)');
+                                                const timeAccentColor = getTimeAccentColor((ev as any).start_date);
+                                                return (
                                                 <tr key={i} style={{
                                                     borderBottom: '1px solid var(--border-color)',
                                                     transition: 'background var(--transition-fast)'
@@ -906,7 +985,7 @@ export function CourseExplorer({
                                                     onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-color)'}
                                                     onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                                                 >
-                                                    <td style={{ padding: '0.75rem' }}>
+                                                    <td style={{ padding: '0.75rem', borderLeft: `4px solid ${borderColor}` }}>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                                             <span style={{
                                                                 padding: '4px 12px',
@@ -939,9 +1018,24 @@ export function CourseExplorer({
                                                             </button>
                                                         </div>
                                                     </td>
-                                                    <td style={{ padding: '0.75rem', fontSize: '0.9rem' }}>{formatDate((ev as any).start_date)}</td>
+                                                    <td style={{ padding: '0.75rem', fontSize: '0.9rem' }}>{formatDateWithDay((ev as any).start_date)}</td>
                                                     <td style={{ padding: '0.75rem', fontSize: '0.9rem', fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
-                                                        {formatTime((ev as any).start_date)} - {formatTime((ev as any).end_date)}
+                                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                                                            <span
+                                                                aria-hidden
+                                                                style={{
+                                                                    width: '0.55rem',
+                                                                    height: '0.55rem',
+                                                                    borderRadius: '2px',
+                                                                    background: timeAccentColor,
+                                                                    display: 'inline-block',
+                                                                    flexShrink: 0
+                                                                }}
+                                                            />
+                                                            <span>
+                                                                {formatTime((ev as any).start_date)} - {formatTime((ev as any).end_date)}
+                                                            </span>
+                                                        </span>
                                                     </td>
                                                     <td style={{ padding: '0.75rem', fontSize: '0.9rem', color: 'var(--text-color)', fontWeight: 600 }}>
                                                         {splitTeachers((ev as any).extractedTeacher).join(', ') || '—'}
@@ -975,7 +1069,7 @@ export function CourseExplorer({
                                                     </td>
                                                     <td style={{ padding: '0.75rem', fontWeight: 600, fontFamily: 'var(--font-mono)' }}>{ev.duration_hours}h</td>
                                                 </tr>
-                                            ))}
+                                            )})}
                                         </tbody>
                                     </table>
                                 </div>
