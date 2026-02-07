@@ -25,7 +25,7 @@ export function CourseExplorer({
 }: Props) {
     const [subjectFilter, setSubjectFilter] = useState('');
     const [selectedCalendarId, setSelectedCalendarId] = useState('');
-    const [tab, setTab] = useState<'list' | 'calendar' | 'teachers'>('list');
+    const [tab, setTab] = useState<'list' | 'calendar' | 'teachers' | 'promos'>('list');
     const [mobileCalendarView, setMobileCalendarView] = useState<'timeGridWeek' | 'dayGridMonth' | 'listWeek'>('timeGridWeek');
     const [selectedEvent, setSelectedEvent] = useState<NormalizedEvent | null>(null);
     const lang = useLang();
@@ -146,6 +146,14 @@ export function CourseExplorer({
             .filter(Boolean);
     };
 
+    const splitPromos = (value?: string) => {
+        if (!value) return [];
+        return value
+            .split(',')
+            .map(p => p.trim())
+            .filter(Boolean);
+    };
+
     const rawEventLabel = lang === 'fr' ? "Voir l'événement brut" : 'View raw event';
     const calendarViewOptions = [
         { value: 'timeGridWeek', label: t.calendar_view_week },
@@ -186,10 +194,11 @@ export function CourseExplorer({
         );
     };
 
-    // 3. Stats & Teacher Analysis
+    // 3. Stats & Teacher/Promo Analysis
     const stats = useMemo(() => {
         let cm = 0, td = 0, tp = 0, project = 0, exam = 0, other = 0, total = 0;
         const teacherMap = new Map<string, { cm: number, td: number, tp: number, project: number, exam: number, other: number, total: number }>();
+        const promoMap = new Map<string, { cm: number, td: number, tp: number, project: number, exam: number, other: number, total: number }>();
 
         courseEvents.forEach(ev => {
             const dur = ev.duration_hours || 0;
@@ -218,26 +227,49 @@ export function CourseExplorer({
             // Teacher Extraction
             const teacherNames = splitTeachers((ev as any).extractedTeacher);
             const targetTeachers = teacherNames.length > 0 ? teacherNames : [t.unknown];
+            const promoNames = splitPromos((ev as any).promo);
+            const targetPromos = promoNames.length > 0 ? promoNames : [t.unknown];
 
-            targetTeachers.forEach((teacherName) => {
-                if (!teacherMap.has(teacherName)) {
-                    teacherMap.set(teacherName, { cm: 0, td: 0, tp: 0, project: 0, exam: 0, other: 0, total: 0 });
+            const addDuration = (
+                map: Map<string, { cm: number, td: number, tp: number, project: number, exam: number, other: number, total: number }>,
+                key: string
+            ) => {
+                if (!map.has(key)) {
+                    map.set(key, { cm: 0, td: 0, tp: 0, project: 0, exam: 0, other: 0, total: 0 });
                 }
-                const tStat = teacherMap.get(teacherName)!;
-                if (bucket === 'cm') tStat.cm += dur;
-                else if (bucket === 'td') tStat.td += dur;
-                else if (bucket === 'tp') tStat.tp += dur;
-                else if (bucket === 'project') tStat.project += dur;
-                else if (bucket === 'exam') tStat.exam += dur;
-                else tStat.other += dur;
+                const entry = map.get(key)!;
+                if (bucket === 'cm') entry.cm += dur;
+                else if (bucket === 'td') entry.td += dur;
+                else if (bucket === 'tp') entry.tp += dur;
+                else if (bucket === 'project') entry.project += dur;
+                else if (bucket === 'exam') entry.exam += dur;
+                else entry.other += dur;
 
                 if (bucket === 'cm' || bucket === 'td' || bucket === 'tp' || bucket === 'project') {
-                    tStat.total += dur;
+                    entry.total += dur;
                 }
-            });
+            };
+
+            targetTeachers.forEach(name => addDuration(teacherMap, name));
+            targetPromos.forEach(name => addDuration(promoMap, name));
         });
 
-        return { cm, td, tp, project, exam, other, total, teachers: Array.from(teacherMap.entries()) };
+        const byTotalDesc = (
+            a: [string, { total: number }],
+            b: [string, { total: number }]
+        ) => b[1].total - a[1].total;
+
+        return {
+            cm,
+            td,
+            tp,
+            project,
+            exam,
+            other,
+            total,
+            teachers: Array.from(teacherMap.entries()).sort(byTotalDesc),
+            promos: Array.from(promoMap.entries()).sort(byTotalDesc)
+        };
     }, [courseEvents, t]);
 
     // Calendar Events Format
@@ -388,6 +420,9 @@ export function CourseExplorer({
                                 <button className={`btn ${tab === 'teachers' ? 'btn-primary' : ''}`} onClick={() => setTab('teachers')} style={{ fontSize: '0.74rem', padding: '0.2rem 0.4rem' }}>
                                     👥 {t.by_teacher}
                                 </button>
+                                <button className={`btn ${tab === 'promos' ? 'btn-primary' : ''}`} onClick={() => setTab('promos')} style={{ fontSize: '0.74rem', padding: '0.2rem 0.4rem' }}>
+                                    🎓 {t.by_promo}
+                                </button>
                             </div>
 
                             <div style={{
@@ -440,35 +475,55 @@ export function CourseExplorer({
                         <div style={{ padding: '0.45rem', minHeight: 0 }}>
                             {tab === 'list' && (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                    {courseEvents.map((ev, i) => (
-                                        <div key={i} className="card" style={{ padding: '0.5rem' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.4rem', marginBottom: '0.2rem' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                                    <strong style={{ fontSize: '0.82rem' }}>{ev.type_}</strong>
-                                                    <button
-                                                        className="btn"
-                                                        title={rawEventLabel}
-                                                        aria-label={rawEventLabel}
-                                                        onClick={() => setSelectedEvent(ev)}
-                                                        style={{
-                                                            padding: '0.1rem 0.35rem',
-                                                            fontSize: '0.7rem',
-                                                            lineHeight: 1,
-                                                            borderRadius: '999px'
-                                                        }}
-                                                    >
-                                                        ⓘ
-                                                    </button>
+                                    {courseEvents.map((ev, i) => {
+                                        const promoText = ((ev as any).promo || '—') as string;
+                                        return (
+                                            <div key={i} className="card" style={{ padding: '0.5rem' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.4rem', marginBottom: '0.2rem' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', minWidth: 0, flex: 1 }}>
+                                                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem', minWidth: 0, flex: 1 }}>
+                                                            <strong style={{ fontSize: '0.82rem', flexShrink: 0 }}>{ev.type_}</strong>
+                                                            <span
+                                                                title={promoText}
+                                                                style={{
+                                                                    fontSize: '0.74rem',
+                                                                    color: 'var(--text-muted)',
+                                                                    fontWeight: 400,
+                                                                    minWidth: 0,
+                                                                    overflow: 'hidden',
+                                                                    textOverflow: 'ellipsis',
+                                                                    whiteSpace: 'nowrap'
+                                                                }}
+                                                            >
+                                                                {promoText}
+                                                            </span>
+                                                        </div>
+                                                        <button
+                                                            className="btn"
+                                                            title={rawEventLabel}
+                                                            aria-label={rawEventLabel}
+                                                            onClick={() => setSelectedEvent(ev)}
+                                                            style={{
+                                                                padding: '0.1rem 0.35rem',
+                                                                fontSize: '0.7rem',
+                                                                lineHeight: 1,
+                                                                borderRadius: '999px',
+                                                                flexShrink: 0
+                                                            }}
+                                                        >
+                                                            ⓘ
+                                                        </button>
+                                                    </div>
+                                                    <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', flexShrink: 0 }}>{ev.duration_hours}h</span>
                                                 </div>
-                                                <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{ev.duration_hours}h</span>
+                                                <div style={{ fontSize: '0.77rem', color: 'var(--text-secondary)' }}>
+                                                    {formatDate((ev as any).start_date)} • {formatTime((ev as any).start_date)}-{formatTime((ev as any).end_date)}
+                                                </div>
+                                                <div style={{ fontSize: '0.76rem', marginTop: '0.18rem' }}>{splitTeachers((ev as any).extractedTeacher).join(', ') || '—'}</div>
+                                                <div style={{ fontSize: '0.73rem', color: 'var(--text-muted)' }}>{ev.raw.location || '—'}</div>
                                             </div>
-                                            <div style={{ fontSize: '0.77rem', color: 'var(--text-secondary)' }}>
-                                                {formatDate((ev as any).start_date)} • {formatTime((ev as any).start_date)}-{formatTime((ev as any).end_date)}
-                                            </div>
-                                            <div style={{ fontSize: '0.76rem', marginTop: '0.18rem' }}>{splitTeachers((ev as any).extractedTeacher).join(', ') || '—'}</div>
-                                            <div style={{ fontSize: '0.73rem', color: 'var(--text-muted)' }}>{ev.raw.location || '—'}</div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             )}
 
@@ -544,6 +599,19 @@ export function CourseExplorer({
                             {tab === 'teachers' && (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                     {stats.teachers.map(([name, s]) => (
+                                        <div key={name} className="card" style={{ padding: '0.45rem 0.55rem' }}>
+                                            <div style={{ fontWeight: 700, fontSize: '0.84rem', marginBottom: '0.25rem' }}>{name}</div>
+                                            <div style={{ fontSize: '0.76rem', color: '#475569' }}>
+                                                CM {s.cm.toFixed(1)}h • TD {s.td.toFixed(1)}h • TP {s.tp.toFixed(1)}h • {t.project} {s.project.toFixed(1)}h • {t.total} {s.total.toFixed(1)}h • {t.exam} {s.exam.toFixed(1)}h • {t.other} {s.other.toFixed(1)}h
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {tab === 'promos' && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    {stats.promos.map(([name, s]) => (
                                         <div key={name} className="card" style={{ padding: '0.45rem 0.55rem' }}>
                                             <div style={{ fontWeight: 700, fontSize: '0.84rem', marginBottom: '0.25rem' }}>{name}</div>
                                             <div style={{ fontSize: '0.76rem', color: '#475569' }}>
@@ -759,6 +827,9 @@ export function CourseExplorer({
                                     <button className={`btn ${tab === 'teachers' ? 'btn-primary' : ''}`} onClick={() => setTab('teachers')} style={{ fontSize: isTablet ? '0.68rem' : '0.75rem', padding: isTablet ? '0.17rem 0.34rem' : '0.2rem 0.45rem' }}>
                                         👥 {t.by_teacher}
                                     </button>
+                                    <button className={`btn ${tab === 'promos' ? 'btn-primary' : ''}`} onClick={() => setTab('promos')} style={{ fontSize: isTablet ? '0.68rem' : '0.75rem', padding: isTablet ? '0.17rem 0.34rem' : '0.2rem 0.45rem' }}>
+                                        🎓 {t.by_promo}
+                                    </button>
                                 </div>
                             </div>
 
@@ -969,6 +1040,39 @@ export function CourseExplorer({
                                     <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '2rem', padding: '1rem', background: 'var(--bg-color)', borderRadius: 'var(--radius)', borderLeft: '3px solid var(--info)' }}>
                                         ℹ️ {t.teacher_breakdown_note}
                                     </p>
+                                </div>
+                            )}
+
+                            {tab === 'promos' && (
+                                <div>
+                                    <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
+                                        <thead>
+                                            <tr style={{ textAlign: 'left' }}>
+                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.promo}</th>
+                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>CM</th>
+                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TD</th>
+                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TP</th>
+                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.project}</th>
+                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.total}</th>
+                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.exam}</th>
+                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.other}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {stats.promos.map(([name, s]) => (
+                                                <tr key={name} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                                                    <td style={{ padding: '0.8rem', fontWeight: 600, fontSize: '0.95rem' }}>{name}</td>
+                                                    <td style={{ padding: '0.8rem', color: '#1e40af', fontFamily: 'var(--font-mono)' }}>{s.cm.toFixed(1)}h</td>
+                                                    <td style={{ padding: '0.8rem', color: '#166534', fontFamily: 'var(--font-mono)' }}>{s.td.toFixed(1)}h</td>
+                                                    <td style={{ padding: '0.8rem', color: '#92400e', fontFamily: 'var(--font-mono)' }}>{s.tp.toFixed(1)}h</td>
+                                                    <td style={{ padding: '0.8rem', color: '#7c3aed', fontFamily: 'var(--font-mono)' }}>{s.project.toFixed(1)}h</td>
+                                                    <td style={{ padding: '0.8rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>{s.total.toFixed(1)}h</td>
+                                                    <td style={{ padding: '0.8rem', color: '#b91c1c', fontFamily: 'var(--font-mono)' }}>{s.exam.toFixed(1)}h</td>
+                                                    <td style={{ padding: '0.8rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{s.other.toFixed(1)}h</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
                                 </div>
                             )}
 

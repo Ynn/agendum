@@ -87,6 +87,7 @@ export const strings = {
 
     grouping: 'Grouping',
     by_teacher: 'By Teacher',
+    by_promo: 'By Promo',
     global_mix: 'Global Mix',
     options: 'Options',
     merge_subjects: 'Merge Subjects',
@@ -257,6 +258,7 @@ export const strings = {
 
     grouping: 'Regroupement',
     by_teacher: 'Par enseignant',
+    by_promo: 'Par promo',
     global_mix: 'Vue globale',
     options: 'Options',
     merge_subjects: 'Fusionner les matières',
