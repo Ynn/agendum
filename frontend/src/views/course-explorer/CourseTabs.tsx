@@ -16,25 +16,36 @@ interface Props {
 }
 
 export function CourseTabs({ tab, compact, labels, onTabChange }: Props) {
-  const fontSize = compact ? '0.74rem' : '0.75rem';
-  const padding = compact ? '0.2rem 0.4rem' : '0.2rem 0.45rem';
-  const gap = compact ? '0.35rem' : '0.5rem';
-
   return (
-    <div className="tabs" style={{ display: 'flex', gap }}>
-      <button className={`btn ${tab === 'list' ? 'btn-primary' : ''}`} onClick={() => onTabChange('list')} style={{ fontSize, padding }}>
+    <div className={`course-tabs ${compact ? 'course-tabs--compact' : ''}`}>
+      <button
+        className={`btn course-tabs__btn ${compact ? 'course-tabs__btn--compact' : ''} ${tab === 'list' ? 'btn-primary' : ''}`}
+        onClick={() => onTabChange('list')}
+      >
         📋 {labels.list}
       </button>
-      <button className={`btn ${tab === 'calendar' ? 'btn-primary' : ''}`} onClick={() => onTabChange('calendar')} style={{ fontSize, padding }}>
+      <button
+        className={`btn course-tabs__btn ${compact ? 'course-tabs__btn--compact' : ''} ${tab === 'calendar' ? 'btn-primary' : ''}`}
+        onClick={() => onTabChange('calendar')}
+      >
         📅 {labels.calendar}
       </button>
-      <button className={`btn ${tab === 'teachers' ? 'btn-primary' : ''}`} onClick={() => onTabChange('teachers')} style={{ fontSize, padding }}>
+      <button
+        className={`btn course-tabs__btn ${compact ? 'course-tabs__btn--compact' : ''} ${tab === 'teachers' ? 'btn-primary' : ''}`}
+        onClick={() => onTabChange('teachers')}
+      >
         👥 {labels.byTeacher}
       </button>
-      <button className={`btn ${tab === 'promos' ? 'btn-primary' : ''}`} onClick={() => onTabChange('promos')} style={{ fontSize, padding }}>
+      <button
+        className={`btn course-tabs__btn ${compact ? 'course-tabs__btn--compact' : ''} ${tab === 'promos' ? 'btn-primary' : ''}`}
+        onClick={() => onTabChange('promos')}
+      >
         🎓 {labels.byPromo}
       </button>
-      <button className={`btn ${tab === 'rooms' ? 'btn-primary' : ''}`} onClick={() => onTabChange('rooms')} style={{ fontSize, padding }}>
+      <button
+        className={`btn course-tabs__btn ${compact ? 'course-tabs__btn--compact' : ''} ${tab === 'rooms' ? 'btn-primary' : ''}`}
+        onClick={() => onTabChange('rooms')}
+      >
         🏫 {labels.byRoom}
       </button>
     </div>

@@ -33,15 +33,15 @@ export function CourseEventModal({
       <div className="event-modal-backdrop" onClick={onClose} />
       <div className="card event-modal">
         <div className="event-modal-header">
-          <div style={{ fontWeight: 700 }}>{title}</div>
-          <button className="btn" onClick={onClose} style={{ padding: '0.2rem 0.6rem' }}>×</button>
+          <div className="event-modal-title">{title}</div>
+          <button className="btn event-modal-close" onClick={onClose}>×</button>
         </div>
         <div className="event-modal-grid">
           <div><strong>{labels.time}:</strong> {formatDateWithDay(start)} • {formatTime(start)} - {formatTime(end)}</div>
           <div><strong>{labels.location}:</strong> {event.raw.location || '—'}</div>
           <div><strong>{labels.duration}:</strong> {event.duration_hours}h</div>
         </div>
-        <div style={{ marginTop: '0.6rem', fontSize: '0.9rem', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>
+        <div className="event-modal-description">
           {event.raw.description || '—'}
         </div>
       </div>

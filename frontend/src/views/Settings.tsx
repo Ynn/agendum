@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { CalendarManager } from '../components/CalendarManager';
 import { ImportZone } from '../components/ImportZone';
 import { QrCodeModal } from '../components/QrCodeModal';
+import { UiButton } from '../components/ui/UiButton';
+import { UiSelect } from '../components/ui/UiSelect';
 import type { Calendar, NormalizedEvent, ParseAndNormalizeDetailedResult } from '../types';
 import { useLang, useT } from '../i18n';
 
@@ -52,37 +54,26 @@ export function Settings({
     const repoUrl = 'https://github.com/Ynn/agendum';
 
     return (
-        <div className="settings-view fade-in page-scroll" style={{ padding: isMobile ? '0.55rem' : '1rem', maxWidth: '100%', margin: '0 auto', height: '100%', overflowY: 'auto' }}>
-            <h2 style={{ marginBottom: isMobile ? '0.9rem' : '2rem', fontSize: isMobile ? '1rem' : undefined }}>{t.settings_title}</h2>
+        <div className={`settings-view fade-in page-scroll ${isMobile ? 'settings-view--mobile' : ''}`}>
+            <h2 className={`settings-view__title ${isMobile ? 'settings-view__title--mobile' : ''}`}>{t.settings_title}</h2>
 
             {importNotice && (
-                <div className="card" style={{
-                    padding: isMobile ? '0.65rem' : '0.8rem',
-                    marginBottom: isMobile ? '0.7rem' : '1rem',
-                    background: '#fffbeb',
-                    border: '1px solid #fcd34d',
-                    color: '#92400e'
-                }}>
+                <div className={`card settings-alert settings-alert--warning ${isMobile ? 'settings-alert--mobile' : ''}`}>
                     <strong>{lang === 'fr' ? 'Avertissement' : 'Warning'}:</strong> {importNotice}
                 </div>
             )}
 
-            <section className="card" style={{ padding: isMobile ? '0.8rem' : '1.5rem', marginBottom: isMobile ? '0.7rem' : '2rem' }}>
-                <h3 style={{ marginTop: 0, fontSize: isMobile ? '0.92rem' : undefined }}>{t.teacher_identity}</h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: isMobile ? '0.76rem' : '0.9rem', marginBottom: isMobile ? '0.6rem' : '1rem' }}>
+            <section className={`card settings-section ${isMobile ? 'settings-section--mobile' : ''}`}>
+                <h3 className={`settings-section__title ${isMobile ? 'settings-section__title--mobile' : ''}`}>{t.teacher_identity}</h3>
+                <p className={`settings-section__desc ${isMobile ? 'settings-section__desc--mobile' : ''}`}>
                     {t.teacher_identity_desc}
                 </p>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.35rem', fontSize: isMobile ? '0.8rem' : undefined }}>{t.teacher_select_label}</label>
-                <select
+                <label className={`settings-section__label ${isMobile ? 'settings-section__label--mobile' : ''}`}>{t.teacher_select_label}</label>
+                <UiSelect
                     value={selectedTeacher}
                     onChange={(e) => onSelectTeacher(e.target.value)}
-                    style={{
-                        padding: isMobile ? '0.4rem 0.5rem' : '0.6rem',
-                        borderRadius: 'var(--radius)',
-                        border: '1px solid var(--border-color)',
-                        width: '100%',
-                        fontSize: isMobile ? '0.8rem' : undefined
-                    }}
+                    uiSize={isMobile ? 'sm' : 'md'}
+                    aria-label={t.teacher_select_label}
                 >
                     <option value="">{t.teacher_select_none}</option>
                     {teacherOptions.map(opt => (
@@ -90,29 +81,29 @@ export function Settings({
                             {opt.name} ({opt.count})
                         </option>
                     ))}
-                </select>
+                </UiSelect>
             </section>
 
             {/* 2. Data Management */}
-            <section className="card" style={{ padding: isMobile ? '0.8rem' : '1.5rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isMobile ? '0.6rem' : '1rem' }}>
-                    <h3 style={{ margin: 0, fontSize: isMobile ? '0.92rem' : undefined }}>{t.data_sources}</h3>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <section className={`card settings-section ${isMobile ? 'settings-section--mobile' : ''}`}>
+                <div className="settings-section__header">
+                    <h3 className={`settings-section__title ${isMobile ? 'settings-section__title--mobile' : ''}`}>{t.data_sources}</h3>
+                    <div className="settings-section__actions">
                         {!isMobile && (
-                            <button className="btn" onClick={onOpenFix} style={{ fontSize: isMobile ? '0.74rem' : undefined, padding: isMobile ? '0.2rem 0.45rem' : undefined }}>
+                            <UiButton onClick={onOpenFix}>
                                 {t.fix}
-                            </button>
+                            </UiButton>
                         )}
-                        <button onClick={() => setShowImport(true)} className="btn btn-primary" style={{ fontSize: isMobile ? '0.74rem' : undefined, padding: isMobile ? '0.2rem 0.45rem' : undefined }}>
+                        <UiButton onClick={() => setShowImport(true)} variant="primary" size={isMobile ? 'sm' : 'md'}>
                             {t.import_new_source}
-                        </button>
+                        </UiButton>
                     </div>
                 </div>
 
-                <p style={{ color: 'var(--text-muted)', fontSize: isMobile ? '0.76rem' : '0.9rem', marginBottom: isMobile ? '0.5rem' : '0.9rem' }}>
+                <p className={`settings-section__desc ${isMobile ? 'settings-section__desc--mobile' : ''}`}>
                     {t.data_sources_desc}
                 </p>
-                <p style={{ color: 'var(--text-muted)', fontSize: isMobile ? '0.72rem' : '0.85rem', marginBottom: isMobile ? '0.8rem' : '1.5rem' }}>
+                <p className={`settings-section__hint ${isMobile ? 'settings-section__hint--mobile' : ''}`}>
                     {t.data_sources_visible_hint}
                 </p>
 
@@ -128,80 +119,67 @@ export function Settings({
                 />
             </section>
 
-            <section className="card" style={{ padding: isMobile ? '0.8rem' : '1.5rem', marginTop: '0.7rem' }}>
-                <h3 style={{ marginTop: 0, fontSize: isMobile ? '0.92rem' : undefined }}>{t.data_and_privacy}</h3>
-                <div style={{ display: 'grid', gap: '0.6rem' }}>
+            <section className={`card settings-section settings-section--stacked ${isMobile ? 'settings-section--mobile' : ''}`}>
+                <h3 className={`settings-section__title ${isMobile ? 'settings-section__title--mobile' : ''}`}>{t.data_and_privacy}</h3>
+                <div className="settings-section__grid">
                     <div>
-                        <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.35rem', fontSize: isMobile ? '0.8rem' : undefined }}>{t.theme}</label>
-                        <select
+                        <label className={`settings-section__label ${isMobile ? 'settings-section__label--mobile' : ''}`}>{t.theme}</label>
+                        <UiSelect
                             value={themeMode}
                             onChange={(e) => onThemeModeChange(e.target.value as 'system' | 'light' | 'dark')}
-                            style={{
-                                padding: isMobile ? '0.4rem 0.5rem' : '0.6rem',
-                                borderRadius: 'var(--radius)',
-                                border: '1px solid var(--border-color)',
-                                width: '100%',
-                                fontSize: isMobile ? '0.8rem' : undefined
-                            }}
+                            uiSize={isMobile ? 'sm' : 'md'}
+                            aria-label={t.theme}
                         >
                             <option value="system">{t.theme_system}</option>
                             <option value="light">{t.theme_light}</option>
                             <option value="dark">{t.theme_dark}</option>
-                        </select>
+                        </UiSelect>
                     </div>
                     <div>
-                        <p style={{ color: 'var(--text-muted)', fontSize: isMobile ? '0.76rem' : '0.9rem', marginBottom: '0.5rem' }}>
+                        <p className={`settings-section__desc ${isMobile ? 'settings-section__desc--mobile' : ''}`}>
                             {t.purge_all_desc}
                         </p>
-                        <button
-                            className="btn"
-                            style={{
-                                borderColor: '#ef4444',
-                                color: '#ef4444',
-                                fontSize: isMobile ? '0.74rem' : undefined,
-                                padding: isMobile ? '0.2rem 0.45rem' : undefined
-                            }}
+                        <UiButton
+                            className="settings-danger-btn"
+                            size={isMobile ? 'sm' : 'md'}
                             onClick={() => { void onPurgeAll(); }}
                         >
                             {t.purge_all}
-                        </button>
+                        </UiButton>
                     </div>
                 </div>
             </section>
 
-            <section className="card" style={{ padding: isMobile ? '0.8rem' : '1.5rem', marginTop: '0.7rem' }}>
-                <h3 style={{ marginTop: 0, fontSize: isMobile ? '0.92rem' : undefined }}>{t.about}</h3>
-                <div style={{ display: 'grid', gap: '0.45rem' }}>
-                    <p style={{ color: 'var(--text-muted)', fontSize: isMobile ? '0.76rem' : '0.9rem', margin: 0 }}>
+            <section className={`card settings-section settings-section--stacked ${isMobile ? 'settings-section--mobile' : ''}`}>
+                <h3 className={`settings-section__title ${isMobile ? 'settings-section__title--mobile' : ''}`}>{t.about}</h3>
+                <div className="settings-section__about">
+                    <p className={`settings-section__about-line ${isMobile ? 'settings-section__about-line--mobile' : ''}`}>
                         {t.about_best_effort}
                     </p>
-                    <p style={{ color: 'var(--text-muted)', fontSize: isMobile ? '0.76rem' : '0.9rem', margin: 0 }}>
+                    <p className={`settings-section__about-line ${isMobile ? 'settings-section__about-line--mobile' : ''}`}>
                         {t.about_not_official}
                     </p>
-                    <p style={{ color: 'var(--text-muted)', fontSize: isMobile ? '0.76rem' : '0.9rem', margin: 0 }}>
+                    <p className={`settings-section__about-line ${isMobile ? 'settings-section__about-line--mobile' : ''}`}>
                         {t.about_verify}
                     </p>
-                    <p style={{ color: 'var(--text-muted)', fontSize: isMobile ? '0.76rem' : '0.9rem', margin: 0 }}>
+                    <p className={`settings-section__about-line ${isMobile ? 'settings-section__about-line--mobile' : ''}`}>
                         {t.about_code_prefix}{' '}
                         <a href={repoUrl} target="_blank" rel="noopener noreferrer">
                             {repoUrl}
                         </a>{' '}
                         {t.about_code_suffix}
                     </p>
-                    <p style={{ color: 'var(--text-muted)', fontSize: isMobile ? '0.76rem' : '0.9rem', margin: 0 }}>
+                    <p className={`settings-section__about-line ${isMobile ? 'settings-section__about-line--mobile' : ''}`}>
                         {t.about_recovery}
                     </p>
-                    <p style={{ color: 'var(--text-muted)', fontSize: isMobile ? '0.76rem' : '0.9rem', margin: 0 }}>
+                    <p className={`settings-section__about-line ${isMobile ? 'settings-section__about-line--mobile' : ''}`}>
                         {t.about_proxy}
                     </p>
                 </div>
             </section>
 
             {showImport && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
-                    background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
-                }}>
+                <div className="settings-import-overlay">
                     <ImportZone
                         isMobile={isMobile}
                         onImport={(n, e, s, warning) => {

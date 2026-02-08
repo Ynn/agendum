@@ -1,7 +1,10 @@
 import { useRef, useState } from 'react';
+import { clsx } from 'clsx';
 import type { NormalizedEvent, ParseAndNormalizeDetailedResult } from '../types';
 import { useLang, useT } from '../i18n';
 import { QrScannerModal } from './QrScannerModal';
+import { UiButton } from './ui/UiButton';
+import { UiInput } from './ui/UiInput';
 import { buildParserFatalMessage, buildParserWarningMessage } from '../utils/parseDiagnostics';
 
 interface Props {
@@ -110,120 +113,100 @@ export function ImportZone({
     };
 
     return (
-        <div className="card" style={{
-            background: 'var(--card-bg)',
-            padding: isMobile ? '0.9rem' : '2rem',
-            borderRadius: 'var(--radius)',
-            maxWidth: isMobile ? '94vw' : '500px',
-            margin: '0 auto',
-            textAlign: 'center'
-        }}>
+        <div className={`card import-zone ${isMobile ? 'import-zone--mobile' : ''}`}>
             {/* Error Banner */}
             {error && (
-                <div style={{
-                    background: '#fef2f2', color: '#b91c1c', padding: '0.75rem',
-                    borderRadius: 'var(--radius)', marginBottom: '1rem', fontSize: '0.9rem',
-                    border: '1px solid #fecaca',
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    textAlign: 'left'
-                }}>
+                <div className="import-zone__alert import-zone__alert--error">
                     <div>
                         <strong>{t.error_label}:</strong> {error}
                         <br />
-                        <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>
+                        <span className="import-zone__alert-meta">
                             {t.error_parse_desc}
                         </span>
                     </div>
-                    <button onClick={() => setError(null)} style={{ marginLeft: '0.5rem', background: 'none', border: 'none', cursor: 'pointer', color: '#b91c1c', fontSize: '1.2rem' }}>✕</button>
+                    <UiButton
+                        variant="ghost"
+                        size="sm"
+                        className="import-zone__alert-close"
+                        onClick={() => setError(null)}
+                        aria-label={t.close}
+                    >
+                        ✕
+                    </UiButton>
                 </div>
             )}
             {warning && (
-                <div style={{
-                    background: '#fffbeb',
-                    color: '#92400e',
-                    padding: '0.75rem',
-                    borderRadius: 'var(--radius)',
-                    marginBottom: '1rem',
-                    fontSize: '0.9rem',
-                    border: '1px solid #fcd34d',
-                    textAlign: 'left'
-                }}>
+                <div className="import-zone__alert import-zone__alert--warning">
                     <strong>{lang === 'fr' ? 'Avertissement' : 'Warning'}:</strong> {warning}
                 </div>
             )}
 
-            <h3 style={{ marginTop: 0, fontSize: isMobile ? '0.95rem' : undefined }}>{t.import_calendar}</h3>
+            <h3 className={`import-zone__title ${isMobile ? 'import-zone__title--mobile' : ''}`}>{t.import_calendar}</h3>
 
-            <div style={{ marginBottom: '1rem', textAlign: 'left' }}>
-                <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: 600, fontSize: isMobile ? '0.78rem' : '0.9rem' }}>
+            <div className="import-zone__field">
+                <label className={`import-zone__label ${isMobile ? 'import-zone__label--mobile' : ''}`}>
                     {t.calendar_name_label}
                 </label>
-                <input
+                <UiInput
                     type="text"
                     value={calendarName}
                     onChange={(e) => setCalendarName(e.target.value)}
                     placeholder={t.calendar_name_placeholder}
                     disabled={loading}
-                    style={{
-                        width: '100%',
-                        padding: isMobile ? '0.45rem' : '0.6rem',
-                        borderRadius: '8px',
-                        border: '1px solid #cbd5e1',
-                        fontSize: isMobile ? '0.78rem' : undefined
-                    }}
+                    uiSize={isMobile ? 'sm' : 'md'}
                 />
             </div>
 
             {/* Type Selection */}
-            <div style={{ marginBottom: '1.5rem', textAlign: 'left', background: 'var(--bg-secondary)', padding: '1rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)' }}>
-                <div style={{ marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.9rem' }}>{t.calendar_type}:</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
+            <div className="import-zone__type-box">
+                <div className="import-zone__type-title">{t.calendar_type}:</div>
+                <div className="import-zone__type-options">
+                    <label className="import-zone__type-option">
                         <input
                             type="radio"
                             name="calType"
                             checked={type === 'teacher'}
                             onChange={() => setType('teacher')}
-                            style={{ marginTop: '0.2rem' }}
                         />
                         <div>
-                            <strong style={{ display: 'block', marginBottom: '0.2rem' }}>{t.teacher_schedule}</strong>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t.teacher_schedule_desc}</div>
+                            <strong className="import-zone__type-label">{t.teacher_schedule}</strong>
+                            <div className="import-zone__type-desc">{t.teacher_schedule_desc}</div>
                         </div>
                     </label>
-                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
+                    <label className="import-zone__type-option">
                         <input
                             type="radio"
                             name="calType"
                             checked={type === 'resource'}
                             onChange={() => setType('resource')}
-                            style={{ marginTop: '0.2rem' }}
                         />
                         <div>
-                            <strong style={{ display: 'block', marginBottom: '0.2rem' }}>{t.resource_promo}</strong>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t.resource_promo_desc}</div>
+                            <strong className="import-zone__type-label">{t.resource_promo}</strong>
+                            <div className="import-zone__type-desc">{t.resource_promo_desc}</div>
                         </div>
                     </label>
                 </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-                <button
-                    className={`btn ${sourceMode === 'file' ? 'btn-primary' : ''}`}
-                    style={{ flex: 1 }}
+            <div className="import-zone__source-switch">
+                <UiButton
+                    className="import-zone__source-btn"
+                    variant={sourceMode === 'file' ? 'primary' : 'default'}
+                    size={isMobile ? 'sm' : 'md'}
                     onClick={() => setSourceMode('file')}
                     disabled={loading}
                 >
                     {t.source_file}
-                </button>
-                <button
-                    className={`btn ${sourceMode === 'url' ? 'btn-primary' : ''}`}
-                    style={{ flex: 1 }}
+                </UiButton>
+                <UiButton
+                    className="import-zone__source-btn"
+                    variant={sourceMode === 'url' ? 'primary' : 'default'}
+                    size={isMobile ? 'sm' : 'md'}
                     onClick={() => setSourceMode('url')}
                     disabled={loading}
                 >
                     {t.source_url}
-                </button>
+                </UiButton>
             </div>
 
             {sourceMode === 'file' && (
@@ -231,14 +214,11 @@ export function ImportZone({
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
-                    style={{
-                        border: active ? '2px solid #3b82f6' : '2px dashed #94a3b8',
-                        background: active ? 'var(--primary-light)' : 'var(--bg-secondary)',
-                        borderRadius: 'var(--radius)',
-                        padding: '3rem 1rem',
-                        transition: 'all 0.2s',
-                        cursor: 'pointer'
-                    }}
+                    className={clsx(
+                        'import-zone__drop-zone',
+                        active && 'import-zone__drop-zone--active',
+                        isMobile && 'import-zone__drop-zone--mobile',
+                    )}
                     onClick={() => fileInputRef.current?.click()}
                 >
                     <input
@@ -248,62 +228,54 @@ export function ImportZone({
                         hidden
                         accept=".ics"
                     />
-                    <p style={{ margin: 0, color: 'var(--text-muted)' }}>
+                    <p className="import-zone__drop-hint">
                         {loading ? t.parsing : t.drag_drop}
                     </p>
                 </div>
             )}
 
             {sourceMode === 'url' && (
-                <div style={{
-                    border: '1px solid #e2e8f0',
-                    background: 'var(--bg-secondary)',
-                    borderRadius: 'var(--radius)',
-                    padding: '1rem',
-                    textAlign: 'left'
-                }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.9rem' }}>
+                <div className="import-zone__url-box">
+                    <label className="import-zone__label">
                         {t.calendar_url_label}
                     </label>
-                    <input
+                    <UiInput
                         type="url"
                         value={calendarUrl}
                         onChange={(e) => setCalendarUrl(e.target.value)}
                         placeholder={t.calendar_url_placeholder}
                         disabled={loading}
-                        style={{
-                            width: '100%',
-                            padding: '0.6rem',
-                            borderRadius: '8px',
-                            border: '1px solid #cbd5e1',
-                            marginBottom: '0.75rem'
-                        }}
+                        uiSize={isMobile ? 'sm' : 'md'}
+                        className="import-zone__url-input"
                     />
-                    <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }}>
-                        <button
-                            className="btn btn-primary"
+                    <div className="import-zone__url-actions">
+                        <UiButton
+                            variant="primary"
+                            size={isMobile ? 'sm' : 'md'}
                             onClick={() => { void importFromUrl(); }}
                             disabled={loading || !calendarUrl.trim()}
                         >
                             {loading ? t.parsing : t.import_url}
-                        </button>
-                        <button
-                            className="btn"
+                        </UiButton>
+                        <UiButton
+                            size={isMobile ? 'sm' : 'md'}
                             onClick={() => setShowScanner(true)}
                             disabled={loading}
                         >
                             {t.scan_qr}
-                        </button>
+                        </UiButton>
                     </div>
                 </div>
             )}
 
-            <button
+            <UiButton
                 onClick={onCancel}
-                style={{ marginTop: '1.5rem', background: 'none', border: 'none', color: '#666', cursor: 'pointer', textDecoration: 'underline' }}
+                variant="ghost"
+                size={isMobile ? 'sm' : 'md'}
+                className="import-zone__cancel"
             >
                 {t.cancel}
-            </button>
+            </UiButton>
 
             <QrScannerModal
                 isOpen={showScanner}

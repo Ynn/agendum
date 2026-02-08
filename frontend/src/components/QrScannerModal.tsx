@@ -93,30 +93,21 @@ export function QrScannerModal({ isOpen, onClose, onDetected }: Props) {
   if (!isOpen) return null;
 
   return (
-    <div style={{
-      position: 'fixed',
-      inset: 0,
-      background: 'rgba(0,0,0,0.65)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1200,
-      padding: '1rem'
-    }}>
-      <div className="card" style={{ width: 'min(94vw, 560px)', padding: '0.8rem', background: 'var(--card-bg)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+    <div className="qr-modal-overlay">
+      <div className="card qr-modal qr-modal--scanner">
+        <div className="qr-modal__header">
           <strong>{t.scan_qr}</strong>
-          <button className="btn" onClick={onClose} style={{ padding: '0.2rem 0.45rem', fontSize: '0.78rem' }}>{t.close}</button>
+          <button className="btn qr-modal__close-btn" onClick={onClose}>{t.close}</button>
         </div>
-        <p style={{ marginTop: 0, color: 'var(--text-muted)', fontSize: '0.82rem' }}>{t.qr_scan_hint}</p>
+        <p className="qr-modal__hint">{t.qr_scan_hint}</p>
         {error ? (
-          <div style={{ color: '#ef4444', fontSize: '0.84rem' }}>{error}</div>
+          <div className="qr-modal__error">{error}</div>
         ) : (
           <video
             ref={videoRef}
             playsInline
             muted
-            style={{ width: '100%', borderRadius: '10px', border: '1px solid var(--border-color)', background: '#000' }}
+            className="qr-modal__video"
           />
         )}
       </div>

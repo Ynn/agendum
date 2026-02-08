@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import type { NormalizedEvent } from '../types';
+import { UiInput } from './ui/UiInput';
 
 interface Props {
     search: string;
@@ -34,25 +35,19 @@ export function FilterBar({
     }, [allEvents]);
 
     return (
-        <div className="card filter-bar fade-in" style={{ padding: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div className="card filter-bar fade-in filter-bar__panel">
 
             {/* Search with Autocomplete */}
-            <div style={{ flex: '2 1 300px', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Search Subject / Type</label>
-                <div style={{ position: 'relative' }}>
-                    <input
+            <div className="filter-bar__group filter-bar__group--search">
+                <label className="filter-bar__label">Search Subject / Type</label>
+                <div className="filter-bar__field-wrap">
+                    <UiInput
                         list="suggestions"
                         type="text"
                         placeholder="e.g. PRORES, CM, TP..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        style={{
-                            width: '100%',
-                            padding: '0.6rem',
-                            border: '1px solid var(--border-color)',
-                            borderRadius: 'var(--radius)',
-                            fontSize: '1rem'
-                        }}
+                        className="filter-bar__input"
                     />
                     <datalist id="suggestions">
                         {suggestions.map(s => <option key={s} value={s} />)}
@@ -61,40 +56,40 @@ export function FilterBar({
             </div>
 
             {/* Date Range */}
-            <div style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Date Loop</label>
-                <div className="filter-dates" style={{ display: 'flex', gap: '0.5rem' }}>
-                    <input
+            <div className="filter-bar__group filter-bar__group--date">
+                <label className="filter-bar__label">Date Loop</label>
+                <div className="filter-dates filter-bar__inline">
+                    <UiInput
                         type="date"
                         value={dateStart}
                         onChange={(e) => setDateStart(e.target.value)}
-                        style={{ flex: 1, padding: '0.6rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)' }}
+                        className="filter-bar__inline-input"
                     />
-                    <input
+                    <UiInput
                         type="date"
                         value={dateEnd}
                         onChange={(e) => setDateEnd(e.target.value)}
-                        style={{ flex: 1, padding: '0.6rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)' }}
+                        className="filter-bar__inline-input"
                     />
                 </div>
             </div>
 
             {/* Time Slot (Nounou) */}
-            <div style={{ flex: '1 1 180px', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Time Slot (Nounou)</label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <input
+            <div className="filter-bar__group filter-bar__group--time">
+                <label className="filter-bar__label">Time Slot (Nounou)</label>
+                <div className="filter-bar__inline filter-bar__inline--time">
+                    <UiInput
                         type="time"
                         value={start}
                         onChange={(e) => setStart(e.target.value)}
-                        style={{ flex: 1, padding: '0.6rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)' }}
+                        className="filter-bar__inline-input"
                     />
-                    <span style={{ color: 'var(--text-muted)' }}>-</span>
-                    <input
+                    <span className="filter-bar__separator">-</span>
+                    <UiInput
                         type="time"
                         value={end}
                         onChange={(e) => setEnd(e.target.value)}
-                        style={{ flex: 1, padding: '0.6rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)' }}
+                        className="filter-bar__inline-input"
                     />
                 </div>
             </div>
@@ -102,8 +97,7 @@ export function FilterBar({
             {(search || start || end || dateStart || dateEnd) && (
                 <button
                     onClick={() => { setSearch(''); setStart(''); setEnd(''); setDateStart(''); setDateEnd(''); }}
-                    className="btn"
-                    style={{ height: '42px', marginTop: 'auto', background: '#fee2e2', color: '#dc2626', borderColor: '#fecaca' }}
+                    className="btn filter-bar__clear-btn"
                 >
                     Clear
                 </button>

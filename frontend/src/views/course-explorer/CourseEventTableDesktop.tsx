@@ -33,18 +33,26 @@ export function CourseEventTableDesktop({
   getTimeAccentColor,
   onOpenEvent,
 }: Props) {
+  const getTypeTone = (value: string) => {
+    const upper = value.toUpperCase();
+    if (upper.includes('CM')) return 'cm';
+    if (upper.includes('TD')) return 'td';
+    if (upper.includes('TP')) return 'tp';
+    return 'other';
+  };
+
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
-        <thead style={{ position: 'sticky', top: 0, background: 'var(--card-bg)', zIndex: 10 }}>
-          <tr style={{ textAlign: 'left' }}>
-            <th style={headerStyle}>{labels.type}</th>
-            <th style={headerStyle}>{labels.date}</th>
-            <th style={headerStyle}>{labels.time}</th>
-            <th style={headerStyle}>{labels.teacher}</th>
-            <th style={headerStyle}>{labels.promo}</th>
-            <th style={headerStyle}>{labels.location}</th>
-            <th style={headerStyle}>{labels.duration}</th>
+    <div className="course-events-table-wrap">
+      <table className="course-events-table">
+        <thead className="course-events-table__head">
+          <tr className="course-events-table__head-row">
+            <th className="course-events-table__head-cell">{labels.type}</th>
+            <th className="course-events-table__head-cell">{labels.date}</th>
+            <th className="course-events-table__head-cell">{labels.time}</th>
+            <th className="course-events-table__head-cell">{labels.teacher}</th>
+            <th className="course-events-table__head-cell">{labels.promo}</th>
+            <th className="course-events-table__head-cell">{labels.location}</th>
+            <th className="course-events-table__head-cell">{labels.duration}</th>
           </tr>
         </thead>
         <tbody>
@@ -54,88 +62,48 @@ export function CourseEventTableDesktop({
             return (
               <tr
                 key={index}
-                style={{ borderBottom: '1px solid var(--border-color)', transition: 'background var(--transition-fast)' }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-color)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                className="course-events-table__row"
               >
-                <td style={{ padding: '0.75rem', borderLeft: `4px solid ${borderColor}` }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <span style={{
-                      padding: '4px 12px',
-                      borderRadius: 'var(--radius-full)',
-                      fontSize: '0.8rem',
-                      fontWeight: 600,
-                      background: event.type_.toUpperCase().includes('CM') ? '#dbeafe'
-                        : event.type_.toUpperCase().includes('TD') ? '#dcfce7'
-                          : event.type_.toUpperCase().includes('TP') ? '#fef3c7' : '#f3f4f6',
-                      color: event.type_.toUpperCase().includes('CM') ? '#1e40af'
-                        : event.type_.toUpperCase().includes('TD') ? '#166534'
-                          : event.type_.toUpperCase().includes('TP') ? '#92400e' : '#374151',
-                      display: 'inline-block'
-                    }}>
+                <td className="course-events-table__cell course-events-table__cell--type" style={{ borderLeftColor: borderColor }}>
+                  <div className="course-events-table__type-wrap">
+                    <span className={`course-events-table__type-badge course-events-table__type-badge--${getTypeTone(event.type_)}`}>
                       {event.type_}
                     </span>
                     <button
-                      className="btn"
+                      className="btn course-events-table__raw-btn"
                       title={rawEventLabel}
                       aria-label={rawEventLabel}
                       onClick={() => onOpenEvent(event)}
-                      style={{
-                        padding: '0.12rem 0.35rem',
-                        fontSize: '0.7rem',
-                        lineHeight: 1,
-                        borderRadius: '999px'
-                      }}
                     >
                       ⓘ
                     </button>
                   </div>
                 </td>
-                <td style={{ padding: '0.75rem', fontSize: '0.9rem' }}>{formatDateWithDay(event.start_date)}</td>
-                <td style={{ padding: '0.75rem', fontSize: '0.9rem', fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                <td className="course-events-table__cell course-events-table__cell--date">{formatDateWithDay(event.start_date)}</td>
+                <td className="course-events-table__cell course-events-table__cell--time">
+                  <span className="course-events-table__time-wrap">
                     <span
                       aria-hidden
-                      style={{
-                        width: '0.55rem',
-                        height: '0.55rem',
-                        borderRadius: '2px',
-                        background: timeAccentColor,
-                        display: 'inline-block',
-                        flexShrink: 0
-                      }}
+                      className="course-events-table__time-accent"
+                      style={{ background: timeAccentColor }}
                     />
                     <span>
                       {formatTime(event.start_date)} - {formatTime(event.end_date)}
                     </span>
                   </span>
                 </td>
-                <td style={{ padding: '0.75rem', fontSize: '0.9rem', color: 'var(--text-color)', fontWeight: 600 }}>
+                <td className="course-events-table__cell course-events-table__cell--teacher">
                   {splitTeachers(event.extractedTeacher).join(', ') || '—'}
                 </td>
-                <td style={{ padding: '0.75rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                  <div
-                    title={event.promo || '—'}
-                    style={{
-                      display: 'inline-block',
-                      width: '220px',
-                      minWidth: '120px',
-                      maxWidth: '480px',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      resize: 'horizontal',
-                      paddingRight: '0.25rem',
-                      verticalAlign: 'middle'
-                    }}
-                  >
+                <td className="course-events-table__cell course-events-table__cell--promo">
+                  <div title={event.promo || '—'} className="course-events-table__promo-value">
                     {event.promo || '—'}
                   </div>
                 </td>
-                <td style={{ padding: '0.75rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                <td className="course-events-table__cell course-events-table__cell--location">
                   {event.raw.location || '—'}
                 </td>
-                <td style={{ padding: '0.75rem', fontWeight: 600, fontFamily: 'var(--font-mono)' }}>{event.duration_hours}h</td>
+                <td className="course-events-table__cell course-events-table__cell--duration">{event.duration_hours}h</td>
               </tr>
             );
           })}
@@ -144,13 +112,3 @@ export function CourseEventTableDesktop({
     </div>
   );
 }
-
-const headerStyle = {
-  padding: '0.75rem',
-  borderBottom: '2px solid var(--border-color)',
-  fontWeight: 600,
-  fontSize: '0.85rem',
-  color: 'var(--text-muted)',
-  textTransform: 'uppercase',
-  letterSpacing: '0.05em',
-};

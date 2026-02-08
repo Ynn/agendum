@@ -28,23 +28,14 @@ export function QrCodeModal({ value, onClose }: Props) {
   if (!value) return null;
 
   return (
-    <div style={{
-      position: 'fixed',
-      inset: 0,
-      background: 'rgba(0,0,0,0.65)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1200,
-      padding: '1rem'
-    }}>
-      <div className="card" style={{ width: 'min(92vw, 420px)', padding: '1rem', background: 'var(--card-bg)', textAlign: 'center' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+    <div className="qr-modal-overlay">
+      <div className="card qr-modal qr-modal--code">
+        <div className="qr-modal__header">
           <strong>{t.show_qr}</strong>
-          <button className="btn" onClick={onClose} style={{ padding: '0.2rem 0.45rem', fontSize: '0.78rem' }}>{t.close}</button>
+          <button className="btn qr-modal__close-btn" onClick={onClose}>{t.close}</button>
         </div>
-        <canvas ref={canvasRef} style={{ width: '100%', maxWidth: 280, borderRadius: 8, border: '1px solid var(--border-color)' }} />
-        <div style={{ marginTop: '0.6rem', color: 'var(--text-muted)', fontSize: '0.72rem', wordBreak: 'break-all' }}>{value}</div>
+        <canvas ref={canvasRef} className="qr-modal__canvas" />
+        <div className="qr-modal__value">{value}</div>
       </div>
     </div>
   );

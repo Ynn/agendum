@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback, type CSSProperties } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import type { EnrichedEvent } from '../types';
 import { useLang, useT } from '../i18n';
@@ -33,7 +33,7 @@ export function CourseExplorer({
     const [subjectFilter, setSubjectFilter] = useState('');
     const [selectedCalendarId, setSelectedCalendarId] = useState('');
     const [tab, setTab] = useState<CourseTab>('list');
-    const [mobileCalendarView, setMobileCalendarView] = useState<'timeGridWeek' | 'dayGridMonth' | 'listWeek'>('timeGridWeek');
+    const [mobileCalendarView, setMobileCalendarView] = useState<'timeGridDay' | 'timeGridWeek' | 'dayGridMonth'>('timeGridWeek');
     const [breakdownScope, setBreakdownScope] = useState<'total' | 'done' | 'todo'>('total');
     const [selectedEvent, setSelectedEvent] = useState<EnrichedEvent | null>(null);
     const [nowTs, setNowTs] = useState(() => Date.now());
@@ -179,10 +179,10 @@ export function CourseExplorer({
     }, []);
 
     const rawEventLabel = lang === 'fr' ? "Voir l'événement brut" : 'View raw event';
-    const calendarViewOptions: Array<{ value: 'timeGridWeek' | 'dayGridMonth' | 'listWeek'; label: string }> = [
+    const calendarViewOptions: Array<{ value: 'timeGridDay' | 'timeGridWeek' | 'dayGridMonth'; label: string }> = [
+        { value: 'timeGridDay', label: lang === 'fr' ? 'Jour' : 'Day' },
         { value: 'timeGridWeek', label: t.calendar_view_week },
         { value: 'dayGridMonth', label: t.calendar_view_month },
-        { value: 'listWeek', label: t.calendar_view_planning }
     ];
     const dayLetters = lang === 'fr'
         ? ['D', 'L', 'M', 'M', 'J', 'V', 'S']
@@ -342,7 +342,7 @@ export function CourseExplorer({
         const colors = subjectColors ?? getSubjectColor(selectedSubject);
         return scopedCourseEvents.map(ev => {
             return {
-                title: `${ev.type_} - ${ev.raw.location || ''}`,
+                title: `${ev.type_ || selectedSubject}`.trim(),
                 start: ev.start_iso,
                 end: ev.end_iso,
                 backgroundColor: colors.bg,
@@ -359,7 +359,7 @@ export function CourseExplorer({
     if (isMobile) {
         return (
             <>
-            <div className="course-mobile fade-in page-scroll" style={{ height: '100%', minHeight: 0, overflowY: 'auto', padding: '0.35rem 0.2rem 0.6rem' }}>
+            <div className="course-mobile fade-in page-scroll course-mobile--shell">
                 {!selectedSubject ? (
                     <SubjectPickerMobile
                         selectedCalendarId={selectedCalendarId}
@@ -382,40 +382,28 @@ export function CourseExplorer({
                         }}
                     />
                 ) : (
-                    <div className="card" style={{ padding: '0', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-                        <div style={{
-                            padding: '0.65rem 0.7rem',
-                            borderBottom: '1px solid var(--border-color)',
-                            background: subjectColors ? getSubjectColorLight(selectedSubject) : 'var(--bg-color)'
-                        }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.45rem' }}>
+                    <div className="card course-mobile__content">
+                        <div
+                            className="course-mobile__header"
+                            style={{
+                                '--course-subject-bg': subjectColors ? getSubjectColorLight(selectedSubject) : 'var(--bg-color)',
+                                '--course-accent': subjectColors?.bg || 'var(--primary-color)',
+                            } as CSSProperties}
+                        >
+                            <div className="course-mobile__top-row">
                                 <button
-                                    className="btn"
-                                    style={{ padding: '0.3rem 0.7rem', fontSize: '0.78rem', fontWeight: 600 }}
+                                    className="btn course-mobile__back-btn"
                                     onClick={() => onSubjectChange('')}
                                 >
                                     ← {t.back}
                                 </button>
-                                <h2 style={{
-                                    margin: 0,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.45rem',
-                                    fontSize: '1rem',
-                                    fontWeight: 700
-                                }}>
-                                    <span style={{
-                                        display: 'inline-block',
-                                        width: '6px',
-                                        height: '20px',
-                                        borderRadius: 'var(--radius-sm)',
-                                        background: subjectColors?.bg || 'var(--primary-color)'
-                                    }}></span>
+                                <h2 className="course-mobile__subject-title">
+                                    <span className="course-mobile__subject-accent"></span>
                                     {selectedSubject}
                                 </h2>
                             </div>
 
-                            <div style={{ marginBottom: '0.45rem' }}>
+                            <div className="course-mobile__tabs">
                                 <CourseTabs
                                     tab={tab}
                                     compact={true}
@@ -445,7 +433,7 @@ export function CourseExplorer({
                             />
                         </div>
 
-                        <div style={{ padding: '0.45rem', minHeight: 0 }}>
+                        <div className="course-mobile__body">
                             {tab === 'list' && (
                                 <CourseEventListMobile
                                     events={scopedCourseEvents}
@@ -519,7 +507,7 @@ export function CourseExplorer({
     }
 
     return (
-        <div className="course-explorer fade-in full-height-view" style={{ display: 'flex', minHeight: 0, gap: isTablet ? '0.6rem' : '1rem', height: '100%' }}>
+        <div className={`course-explorer fade-in full-height-view ${isTablet ? 'course-explorer--tablet' : ''}`}>
 
             <SubjectSidebarDesktop
                 isTablet={isTablet}
@@ -540,45 +528,25 @@ export function CourseExplorer({
             />
 
             {/* Main Content - RIGHT SIDE */}
-            <div className="card" style={{ flex: 1, padding: '0', display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
+            <div className="card course-explorer__main">
                 {!selectedSubject ? (
-                    <div style={{
-                        display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        height: '100%',
-                        color: 'var(--text-light)',
-                        flexDirection: 'column',
-                        gap: '1rem',
-                        padding: '2rem'
-                    }}>
-                        <div style={{ fontSize: '3rem', opacity: 0.5 }}>📚</div>
-                        <div style={{ fontSize: '1.1rem', fontWeight: 500 }}>{t.select_subject_hint}</div>
+                    <div className="course-explorer__empty">
+                        <div className="course-explorer__empty-icon">📚</div>
+                        <div className="course-explorer__empty-text">{t.select_subject_hint}</div>
                     </div>
                 ) : (
                     <>
                         {/* Header & Stats Header */}
-                        <div style={{
-                            padding: isTablet ? '0.55rem 0.65rem' : '0.7rem 0.9rem',
-                            borderBottom: '1px solid var(--border-color)',
-                            background: subjectColors ? getSubjectColorLight(selectedSubject) : 'var(--bg-color)'
-                        }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isTablet ? '0.35rem' : '0.5rem', flexWrap: 'wrap', gap: isTablet ? '0.35rem' : '0.5rem' }}>
-                                <h2 style={{
-                                    margin: 0,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.45rem',
-                                    fontSize: isTablet ? '0.94rem' : '1.05rem',
-                                    fontWeight: 700
-                                }}>
-                                    <span style={{
-                                        display: 'inline-block',
-                                        width: '6px',
-                                        height: isTablet ? '17px' : '20px',
-                                        borderRadius: 'var(--radius-sm)',
-                                        background: subjectColors?.bg || 'var(--primary-color)'
-                                    }}></span>
+                        <div
+                            className={`course-explorer__header ${isTablet ? 'course-explorer__header--tablet' : ''}`}
+                            style={{
+                                '--course-subject-bg': subjectColors ? getSubjectColorLight(selectedSubject) : 'var(--bg-color)',
+                                '--course-accent': subjectColors?.bg || 'var(--primary-color)',
+                            } as CSSProperties}
+                        >
+                            <div className={`course-explorer__header-row ${isTablet ? 'course-explorer__header-row--tablet' : ''}`}>
+                                <h2 className={`course-explorer__subject-title ${isTablet ? 'course-explorer__subject-title--tablet' : ''}`}>
+                                    <span className={`course-explorer__subject-accent ${isTablet ? 'course-explorer__subject-accent--tablet' : ''}`}></span>
                                     {selectedSubject}
                                 </h2>
                                 <CourseTabs
@@ -611,7 +579,7 @@ export function CourseExplorer({
                         </div>
 
                         {/* Content Body */}
-                        <div style={{ flex: 1, overflowY: tab === 'calendar' ? 'hidden' : 'auto', padding: '0.5rem', minHeight: 0 }}>
+                        <div className={`course-explorer__body ${tab === 'calendar' ? 'course-explorer__body--calendar' : ''}`}>
 
                             {tab === 'list' && (
                                 <CourseEventTableDesktop
@@ -656,7 +624,7 @@ export function CourseExplorer({
                                             other: t.other
                                         }}
                                     />
-                                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '2rem', padding: '1rem', background: 'var(--bg-color)', borderRadius: 'var(--radius)', borderLeft: '3px solid var(--info)' }}>
+                                    <p className="course-explorer__teacher-note">
                                         ℹ️ {t.teacher_breakdown_note}
                                     </p>
                                 </div>

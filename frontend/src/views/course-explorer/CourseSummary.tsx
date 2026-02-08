@@ -37,33 +37,17 @@ export function CourseSummary({
   const compact = size !== 'desktop';
 
   return (
-    <div style={{
-      display: 'flex',
-      gap: size === 'mobile' ? '0.8rem' : '0.9rem',
-      flexWrap: 'wrap',
-      padding: size === 'mobile' ? '0.45rem 0.55rem' : '0.45rem 0.6rem',
-      background: 'var(--card-bg)',
-      borderRadius: 'var(--radius)',
-      boxShadow: 'var(--shadow-xs)'
-    }}>
-      <Metric icon="⏱️" label={labels.totalLabel} value={summary.total} color="var(--text-color)" compact={compact} />
-      <Metric icon="📖" label="CM" value={summary.cm} color="#1e40af" compact={compact} />
-      <Metric icon="✏️" label="TD" value={summary.td} color="#166534" compact={compact} />
-      <Metric icon="🔬" label="TP" value={summary.tp} color="#374151" compact={compact} />
-      <Metric icon="🧩" label={labels.project} value={summary.project} color="#7c3aed" compact={compact} />
+    <div className={`course-summary course-summary--${size}`}>
+      <Metric icon="⏱️" label={labels.totalLabel} value={summary.total} tone="default" compact={compact} />
+      <Metric icon="📖" label="CM" value={summary.cm} tone="cm" compact={compact} />
+      <Metric icon="✏️" label="TD" value={summary.td} tone="td" compact={compact} />
+      <Metric icon="🔬" label="TP" value={summary.tp} tone="tp" compact={compact} />
+      <Metric icon="🧩" label={labels.project} value={summary.project} tone="project" compact={compact} />
 
       <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: size === 'mobile' ? '0.35rem' : '0.45rem',
-          flexWrap: 'wrap',
-          marginLeft: size === 'mobile' ? 0 : 'auto',
-          width: size === 'mobile' ? '100%' : undefined,
-          flexBasis: size === 'mobile' ? '100%' : undefined
-        }}
+        className={`course-summary__scope ${compact ? 'course-summary__scope--compact' : ''} ${size === 'mobile' ? 'course-summary__scope--mobile' : ''}`}
       >
-        <span style={{ fontSize: compact ? '0.66rem' : '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+        <span className={`course-summary__scope-label ${compact ? 'course-summary__scope-label--compact' : ''}`}>
           {labels.servicePeriodLabel}
         </span>
         {([
@@ -74,12 +58,8 @@ export function CourseSummary({
           <button
             key={opt.key}
             type="button"
-            className={`btn ${scope === opt.key ? 'btn-primary' : ''}`}
+            className={`btn course-summary__scope-btn ${compact ? 'course-summary__scope-btn--compact' : ''} ${scope === opt.key ? 'btn-primary' : ''}`}
             onClick={() => onScopeChange(opt.key)}
-            style={{
-              fontSize: compact ? '0.66rem' : '0.72rem',
-              padding: compact ? '0.16rem 0.34rem' : '0.2rem 0.42rem'
-            }}
           >
             {opt.label}
           </button>
@@ -93,30 +73,23 @@ function Metric({
   icon,
   label,
   value,
-  color,
+  tone,
   compact,
 }: {
   icon: string;
   label: string;
   value: number;
-  color: string;
+  tone: 'default' | 'cm' | 'td' | 'tp' | 'project';
   compact: boolean;
 }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-      <span style={{ fontSize: '1rem' }}>{icon}</span>
+    <div className="course-summary__metric">
+      <span className="course-summary__metric-icon">{icon}</span>
       <div>
-        <div
-          style={{
-            fontSize: '0.62rem',
-            color: 'var(--text-muted)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em'
-          }}
-        >
+        <div className="course-summary__metric-label">
           {label}
         </div>
-        <div style={{ fontSize: compact ? '0.92rem' : '0.95rem', fontWeight: 700, color }}>
+        <div className={`course-summary__metric-value ${compact ? 'course-summary__metric-value--compact' : ''} course-summary__metric-value--${tone}`}>
           {value.toFixed(1)}h
         </div>
       </div>

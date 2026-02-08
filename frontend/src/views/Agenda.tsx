@@ -51,6 +51,17 @@ const weekToDate = (value: string) => {
     else isoWeekStart.setDate(simple.getDate() + 8 - simple.getDay());
     return isoWeekStart;
 };
+const SLOT_STEP_MINUTES = 30;
+const DEFAULT_SLOT_MIN_MINUTES = 7 * 60 + 30; // 07:30
+const DEFAULT_SLOT_MAX_MINUTES = 19 * 60 + 30; // 19:30
+const floorToStep = (value: number, step: number) => Math.floor(value / step) * step;
+const ceilToStep = (value: number, step: number) => Math.ceil(value / step) * step;
+const toSlotTime = (minutes: number) => {
+    if (minutes >= 24 * 60) return '24:00:00';
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return `${pad2(h)}:${pad2(m)}:00`;
+};
 
 export function Agenda({
     events,
@@ -63,9 +74,13 @@ export function Agenda({
     const t = useT();
     const containerRef = useRef<HTMLDivElement | null>(null);
     const calendarRef = useRef<FullCalendar | null>(null);
+    const mobileTitleRef = useRef<HTMLDivElement | null>(null);
+    const measureCanvasRef = useRef<HTMLCanvasElement | null>(null);
     const swipeRef = useRef<{ x: number; y: number } | null>(null);
     const [currentView, setCurrentView] = useState('timeGridWeek');
     const [currentTitle, setCurrentTitle] = useState('');
+    const [compactTitle, setCompactTitle] = useState('');
+    const [useCompactTitle, setUseCompactTitle] = useState(false);
     const [weekValue, setWeekValue] = useState('');
     const [selectedEvent, setSelectedEvent] = useState<EventApi | null>(null);
     const [listRange, setListRange] = useState<{ start: string; end: string; enabled: boolean }>({
@@ -88,6 +103,14 @@ export function Agenda({
         return lang === 'fr' ? formatted.replace(',', '') : formatted;
     };
 
+    const formatShortDate = (date: Date) => {
+        const day = date.getDate();
+        const month = date.getMonth() + 1;
+        const year = pad2(date.getFullYear() % 100);
+        if (lang === 'fr') return `${day}/${month}/${year}`;
+        return `${month}/${day}/${year}`;
+    };
+
     const buildTitle = (viewType: string, start: Date, end: Date, fallback: string) => {
         if (viewType !== 'timeGridWeek' && viewType !== 'timeGridDay') return fallback;
         const [, week = ''] = toWeekInputValue(start).split('-W');
@@ -105,6 +128,26 @@ export function Agenda({
         }
 
         const dayLabel = formatDayMonthYear(start);
+        if (lang === 'fr') return `${prefix} : ${dayLabel}`;
+        return `${prefix}: ${dayLabel}`;
+    };
+
+    const buildCompactTitle = (viewType: string, start: Date, end: Date, fallback: string) => {
+        if (viewType !== 'timeGridWeek' && viewType !== 'timeGridDay') return fallback;
+        const [, week = ''] = toWeekInputValue(start).split('-W');
+        if (!week) return fallback;
+        const prefix = `${lang === 'fr' ? 'S' : 'W'}${week}`;
+
+        if (viewType === 'timeGridWeek') {
+            const endInclusive = new Date(end);
+            endInclusive.setDate(endInclusive.getDate() - 1);
+            const startLabel = formatShortDate(start);
+            const endLabel = formatShortDate(endInclusive);
+            if (lang === 'fr') return `${prefix} : ${startLabel} - ${endLabel}`;
+            return `${prefix}: ${startLabel} - ${endLabel}`;
+        }
+
+        const dayLabel = formatShortDate(start);
         if (lang === 'fr') return `${prefix} : ${dayLabel}`;
         return `${prefix}: ${dayLabel}`;
     };
@@ -154,6 +197,47 @@ export function Agenda({
         const raf = window.requestAnimationFrame(applyTitle);
         return () => window.cancelAnimationFrame(raf);
     }, [isMobile, currentTitle]);
+
+    useEffect(() => {
+        if (!isMobile) {
+            setUseCompactTitle(false);
+            return;
+        }
+        const titleEl = mobileTitleRef.current;
+        if (!titleEl || !currentTitle) return;
+
+        const measure = () => {
+            const canvas = measureCanvasRef.current ?? document.createElement('canvas');
+            measureCanvasRef.current = canvas;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                setUseCompactTitle(false);
+                return;
+            }
+            const style = window.getComputedStyle(titleEl);
+            ctx.font = `${style.fontStyle} ${style.fontVariant} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+            const fullWidth = ctx.measureText(currentTitle).width;
+            const availableWidth = titleEl.clientWidth;
+            setUseCompactTitle(fullWidth > availableWidth + 1);
+        };
+
+        measure();
+        const raf = window.requestAnimationFrame(measure);
+        const onResize = () => measure();
+        window.addEventListener('resize', onResize);
+
+        let observer: ResizeObserver | null = null;
+        if (typeof ResizeObserver !== 'undefined') {
+            observer = new ResizeObserver(() => measure());
+            observer.observe(titleEl);
+        }
+
+        return () => {
+            window.cancelAnimationFrame(raf);
+            window.removeEventListener('resize', onResize);
+            observer?.disconnect();
+        };
+    }, [isMobile, currentTitle, compactTitle]);
 
     const listDays = useMemo(() => {
         if (!listRange.enabled || !listRange.start || !listRange.end) return 7;
@@ -211,14 +295,79 @@ export function Agenda({
         });
     }, [events, isListView, listRange.enabled, listRange.start, listRange.end]);
 
+    const slotBounds = useMemo(() => {
+        let earliestStartMinutes: number | null = null;
+        let latestEndMinutes: number | null = null;
+
+        for (const ev of events) {
+            const startAt = ev.start_date ? new Date(ev.start_date) : new Date(ev.start_iso);
+            const endAt = ev.end_date ? new Date(ev.end_date) : new Date(ev.end_iso);
+            if (Number.isNaN(startAt.getTime()) || Number.isNaN(endAt.getTime())) continue;
+
+            const startMinutes = startAt.getHours() * 60 + startAt.getMinutes();
+            const endMinutes = endAt.getHours() * 60 + endAt.getMinutes();
+            const spansMultipleDays = (
+                endAt.getFullYear() !== startAt.getFullYear() ||
+                endAt.getMonth() !== startAt.getMonth() ||
+                endAt.getDate() !== startAt.getDate()
+            );
+            const effectiveEndMinutes = spansMultipleDays
+                ? 24 * 60
+                : Math.max(endMinutes, startMinutes + SLOT_STEP_MINUTES);
+
+            earliestStartMinutes = earliestStartMinutes === null
+                ? startMinutes
+                : Math.min(earliestStartMinutes, startMinutes);
+            latestEndMinutes = latestEndMinutes === null
+                ? effectiveEndMinutes
+                : Math.max(latestEndMinutes, effectiveEndMinutes);
+        }
+
+        let minMinutes = DEFAULT_SLOT_MIN_MINUTES;
+        let maxMinutes = DEFAULT_SLOT_MAX_MINUTES;
+
+        if (earliestStartMinutes !== null && earliestStartMinutes < minMinutes) {
+            minMinutes = floorToStep(earliestStartMinutes, SLOT_STEP_MINUTES);
+        }
+        if (latestEndMinutes !== null && latestEndMinutes > maxMinutes) {
+            maxMinutes = ceilToStep(latestEndMinutes, SLOT_STEP_MINUTES);
+        }
+
+        minMinutes = Math.max(0, Math.min(minMinutes, 23 * 60 + 30));
+        maxMinutes = Math.max(SLOT_STEP_MINUTES, Math.min(maxMinutes, 24 * 60));
+        if (maxMinutes <= minMinutes + SLOT_STEP_MINUTES) {
+            maxMinutes = Math.min(24 * 60, minMinutes + 2 * SLOT_STEP_MINUTES);
+        }
+
+        return {
+            min: toSlotTime(minMinutes),
+            max: toSlotTime(maxMinutes),
+        };
+    }, [events]);
+
+    const getAgendaTypePrefix = (rawType: string) => {
+        const trimmed = (rawType || '').trim();
+        const upper = trimmed.toUpperCase();
+        if (!upper) return '';
+        if (upper.includes('CM')) return 'CM';
+        if (upper.includes('TD')) return 'TD';
+        if (upper.includes('TP')) return 'TP';
+        if (upper.includes('PROJET') || upper.includes('PROJECT')) return 'PJ';
+        if (upper.includes('AUTRE') || upper.includes('RÉUNION') || upper.includes('REUNION')) return '';
+        return trimmed;
+    };
+
     // Map events to FullCalendar format with deterministic subject colors
     const fcEvents = eventsForView.map(ev => {
         const subjectColors = getSubjectColor(ev.subject || '');
         const teacher = ev.extractedTeacher || '';
         const location = ev.raw.location || '';
+        const typePrefix = getAgendaTypePrefix(ev.type_ || '');
+        const subject = (ev.subject || '').trim();
 
         // Build compact title: "TYPE Subject • Teacher • Room"
-        let title = `${ev.type_} ${ev.subject}`;
+        let title = typePrefix ? `${typePrefix} ${subject}`.trim() : subject;
+        if (!title) title = (ev.subject || ev.type_ || '').trim();
         if (!isMobile && teacher && teacher !== '—') {
             title += ` • ${teacher}`;
         }
@@ -245,18 +394,7 @@ export function Agenda({
     return (
         <div
             ref={containerRef}
-            className={`agenda-container ${isMobile ? 'agenda-mobile' : ''}`}
-            style={{
-            background: 'var(--card-bg)',
-            padding: isMobile ? '0.2rem' : '0.75rem',
-            borderRadius: isMobile ? '10px' : 'var(--radius)',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-            display: 'flex',
-            flexDirection: 'column',
-            minHeight: 0,
-            flex: 1,
-            overflow: 'auto'
-        }}
+            className={`agenda-container agenda-shell agenda-shell--continuous ${isMobile ? 'agenda-mobile agenda-shell--mobile' : ''}`}
             onTouchStart={(e) => {
                 if (!isMobile || e.touches.length !== 1) return;
                 const t = e.touches[0];
@@ -283,7 +421,9 @@ export function Agenda({
                             <button className="btn" onClick={goToday} aria-label={lang === 'fr' ? 'Aujourd’hui' : 'Today'}>○</button>
                             <button className="btn" onClick={goNext} aria-label={lang === 'fr' ? 'Suivant' : 'Next'}>&gt;</button>
                         </div>
-                        <div className="agenda-mobile-title">{currentTitle}</div>
+                        <div ref={mobileTitleRef} className="agenda-mobile-title">
+                            {useCompactTitle && compactTitle ? compactTitle : currentTitle}
+                        </div>
                         <div className="agenda-mobile-views">
                             <button
                                 className={`btn agenda-mobile-view-btn ${currentView === 'timeGridDay' ? 'active' : ''}`}
@@ -307,70 +447,74 @@ export function Agenda({
                     </div>
                 </div>
             )}
-            <FullCalendar
-                ref={calendarRef}
-                plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
-                initialView="timeGridWeek"
-                views={{
-                    listRange: { type: 'list', duration: { days: listDays } }
-                }}
-                visibleRange={listVisibleRange}
-                stickyHeaderDates={false}
-                headerToolbar={isMobile ? false : {
-                    left: 'prev,next today',
-                    center: 'title',
-                    right: 'timeGridDay,timeGridWeek,dayGridMonth,listRange'
-                }}
-                buttonText={{
-                    today: lang === 'fr' ? 'Aujourd’hui' : 'Today',
-                    day: lang === 'fr' ? 'Jour' : 'Day',
-                    week: lang === 'fr' ? 'Semaine' : 'Week',
-                    month: lang === 'fr' ? 'Mois' : 'Month',
-                    list: lang === 'fr' ? 'Liste' : 'List',
-                    listRange: lang === 'fr' ? 'Liste' : 'List',
-                }}
-                events={fcEvents}
-                eventClick={(info) => {
-                    setSelectedEvent(info.event);
-                }}
-                dayHeaderContent={(arg) => {
-                    if (arg.view.type.includes('list')) return undefined;
-                    const letter = dayLetters[arg.date.getDay()] || '';
-                    const dayNum = pad2(arg.date.getDate());
-                    return `${letter} ${dayNum}`;
-                }}
-                eventContent={(arg) => {
-                    const teacher = arg.event.extendedProps.teacher || '';
-                    const location = arg.event.extendedProps.location || '';
-                    const title = `${arg.event.title.split(' • ')[0]}`; // Just "TYPE Subject"
+            <div className="agenda-calendar-pane">
+                <FullCalendar
+                    ref={calendarRef}
+                    plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
+                    initialView="timeGridWeek"
+                    views={{
+                        listRange: { type: 'list', duration: { days: listDays } }
+                    }}
+                    visibleRange={listVisibleRange}
+                    stickyHeaderDates={false}
+                    headerToolbar={isMobile ? false : {
+                        left: 'prev,next today',
+                        center: 'title',
+                        right: 'timeGridDay,timeGridWeek,dayGridMonth,listRange'
+                    }}
+                    buttonText={{
+                        today: lang === 'fr' ? 'Aujourd’hui' : 'Today',
+                        day: lang === 'fr' ? 'Jour' : 'Day',
+                        week: lang === 'fr' ? 'Semaine' : 'Week',
+                        month: lang === 'fr' ? 'Mois' : 'Month',
+                        list: lang === 'fr' ? 'Liste' : 'List',
+                        listRange: lang === 'fr' ? 'Liste' : 'List',
+                    }}
+                    events={fcEvents}
+                    eventClick={(info) => {
+                        setSelectedEvent(info.event);
+                    }}
+                    dayHeaderContent={(arg) => {
+                        if (arg.view.type.includes('list')) return undefined;
+                        const letter = dayLetters[arg.date.getDay()] || '';
+                        const dayNum = pad2(arg.date.getDate());
+                        return `${letter} ${dayNum}`;
+                    }}
+                    eventContent={(arg) => {
+                        const teacher = arg.event.extendedProps.teacher || '';
+                        const location = arg.event.extendedProps.location || '';
+                        const durationHours = Number(arg.event.extendedProps.duration || 0);
+                        const titleLineClamp = durationHours >= 2 ? 10 : durationHours >= 1 ? 5 : 2;
+                        const locationLineClamp = durationHours >= 2 ? 6 : durationHours >= 1 ? 3 : 1;
+                        const title = `${arg.event.title.split(' • ')[0]}`; // Just "TYPE Subject"
 
-                    // For list view, use default rendering
-                    if (arg.view.type.includes('list')) {
-                        if (isMobile) return { html: title };
-                        return { html: arg.event.title };
-                    }
+                        // For list view, use default rendering
+                        if (arg.view.type.includes('list')) {
+                            if (isMobile) return { html: title };
+                            return { html: arg.event.title };
+                        }
 
-                    if (isMobile) {
-                        const locationLine = location
-                            ? `<div class="fc-event-location" style="font-size: 0.6rem; opacity: 0.8; line-height: 1.1; white-space: normal; word-break: break-word; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
+                        if (isMobile) {
+                            const locationLine = location
+                                ? `<div class="fc-event-location" style="font-size: 0.6rem; opacity: 0.8; line-height: 1.1; white-space: normal; word-break: break-word; overflow: hidden; display: -webkit-box; -webkit-line-clamp: ${locationLineClamp}; -webkit-box-orient: vertical;">
                                     ${location}
                                </div>`
-                            : '';
-                        return {
-                            html: `
+                                : '';
+                            return {
+                                html: `
                                 <div class="fc-event-main-frame" style="padding: 1px 3px; height: 100%; display: flex; flex-direction: column; gap: 1px; overflow: hidden;">
-                                    <div class="fc-event-title fc-sticky" style="font-weight: 600; font-size: 0.68rem; line-height: 1.15; white-space: normal; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
+                                    <div class="fc-event-title fc-sticky" style="font-weight: 600; font-size: 0.68rem; line-height: 1.15; white-space: normal; overflow: hidden; display: -webkit-box; -webkit-line-clamp: ${titleLineClamp}; -webkit-box-orient: vertical;">
                                         ${title}
                                     </div>
                                     ${locationLine}
                                 </div>
                             `
-                        };
-                    }
+                            };
+                        }
 
-                    // Custom multi-line rendering for grid/time views
-                    return {
-                        html: `
+                        // Custom multi-line rendering for grid/time views
+                        return {
+                            html: `
                             <div class="fc-event-main-frame" style="padding: 2px 4px; height: 100%; display: flex; flex-direction: column; overflow: hidden;">
                                 <div class="fc-event-title-container" style="flex-shrink: 0;">
                                     <div class="fc-event-title fc-sticky" style="font-weight: 600; font-size: 0.85rem; line-height: 1.2; white-space: normal; overflow: hidden; text-overflow: ellipsis;">
@@ -381,23 +525,30 @@ export function Agenda({
                                 ${location ? `<div class="fc-event-location" style="font-size: 0.7rem; line-height: 1.2; opacity: 0.8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px;">${location}</div>` : ''}
                             </div>
                         `
-                    };
-                }}
-                locale={lang === 'fr' ? frLocale : undefined}
-                firstDay={1}
-                height={isMobile ? '100%' : 'auto'}
-                slotMinTime={isMobile ? '07:30:00' : '08:00:00'}
-                slotMaxTime={isMobile ? '20:30:00' : '20:00:00'}
-                allDaySlot={false}
-                nowIndicator={true}
-                datesSet={(arg) => {
-                    setCurrentView(prev => (prev === arg.view.type ? prev : arg.view.type));
-                    const nextWeek = toWeekInputValue(arg.start);
-                    setWeekValue(prev => (prev === nextWeek ? prev : nextWeek));
-                    const titleWithBadge = buildTitle(arg.view.type, arg.start, arg.end, arg.view.title);
-                    setCurrentTitle(prev => (prev === titleWithBadge ? prev : titleWithBadge));
-                }}
-            />
+                        };
+                    }}
+                    locale={lang === 'fr' ? frLocale : undefined}
+                    firstDay={1}
+                    height="100%"
+                    contentHeight={undefined}
+                    expandRows={true}
+                    slotDuration="00:30:00"
+                    slotLabelInterval="01:00:00"
+                    slotMinTime={slotBounds.min}
+                    slotMaxTime={slotBounds.max}
+                    allDaySlot={false}
+                    nowIndicator={true}
+                    datesSet={(arg) => {
+                        setCurrentView(prev => (prev === arg.view.type ? prev : arg.view.type));
+                        const nextWeek = toWeekInputValue(arg.start);
+                        setWeekValue(prev => (prev === nextWeek ? prev : nextWeek));
+                        const titleWithBadge = buildTitle(arg.view.type, arg.start, arg.end, arg.view.title);
+                        setCurrentTitle(prev => (prev === titleWithBadge ? prev : titleWithBadge));
+                        const nextCompact = buildCompactTitle(arg.view.type, arg.start, arg.end, arg.view.title);
+                        setCompactTitle(prev => (prev === nextCompact ? prev : nextCompact));
+                    }}
+                />
+            </div>
 
             {!isMobile && (
             <div className="agenda-nav">
@@ -493,8 +644,8 @@ export function Agenda({
                     <div className="event-modal-backdrop" onClick={() => setSelectedEvent(null)} />
                     <div className="card event-modal">
                         <div className="event-modal-header">
-                            <div style={{ fontWeight: 700 }}>{selectedEvent.title}</div>
-                            <button className="btn" onClick={() => setSelectedEvent(null)} style={{ padding: '0.2rem 0.6rem' }}>×</button>
+                            <div className="event-modal-title">{selectedEvent.title}</div>
+                            <button className="btn event-modal-close" onClick={() => setSelectedEvent(null)}>×</button>
                         </div>
                         <div className="event-modal-grid">
                             <div><strong>{t.time}:</strong> {selectedEvent.start?.toLocaleTimeString()} - {selectedEvent.end?.toLocaleTimeString()}</div>
@@ -502,7 +653,7 @@ export function Agenda({
                             <div><strong>{t.duration}:</strong> {selectedEvent.extendedProps.duration}h</div>
                         </div>
                         {selectedEvent.extendedProps.description && (
-                            <div style={{ marginTop: '0.5rem', color: '#475569', fontSize: '0.9rem' }}>
+                            <div className="event-modal-description">
                                 {selectedEvent.extendedProps.description}
                             </div>
                         )}

@@ -1,4 +1,6 @@
 import { getSubjectColor } from '../../utils/colors';
+import { UiInput } from '../../components/ui/UiInput';
+import { UiSelect } from '../../components/ui/UiSelect';
 
 interface Props {
   selectedCalendarId: string;
@@ -29,72 +31,45 @@ export function SubjectPickerMobile({
   onSubjectSelect,
 }: Props) {
   return (
-    <div className="card" style={{ padding: '0.7rem', minHeight: 0 }}>
-      <h3 style={{
-        marginTop: 0,
-        marginBottom: '0.6rem',
-        fontSize: '0.95rem',
-        fontWeight: 700,
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.35rem'
-      }}>
+    <div className="card subject-picker-mobile">
+      <h3 className="subject-picker-mobile__title">
         <span>📚</span> {labels.title}
       </h3>
-      <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
+      <label className="subject-picker-mobile__label">
         {labels.calendarFilterLabel}
       </label>
-      <select
+      <UiSelect
         value={selectedCalendarId}
         onChange={(e) => onCalendarChange(e.target.value)}
-        style={{
-          width: '100%',
-          padding: '0.45rem',
-          marginBottom: '0.6rem',
-          borderRadius: 'var(--radius)',
-          border: '1px solid var(--border-color)',
-          background: 'var(--card-bg)',
-          color: 'var(--text-color)',
-          fontSize: '0.8rem'
-        }}
+        uiSize="sm"
+        className="subject-picker-mobile__select"
       >
         <option value="">{labels.allCalendars}</option>
         {calendarOptions.map(([id, name]) => (
           <option key={id} value={id}>{name}</option>
         ))}
-      </select>
-      <input
+      </UiSelect>
+      <UiInput
         type="text"
         placeholder={`🔍 ${labels.filterPlaceholder}`}
-        style={{
-          padding: '0.55rem',
-          marginBottom: '0.6rem',
-          borderRadius: 'var(--radius)',
-          border: '1px solid var(--border-color)',
-          width: '100%',
-          fontSize: '0.85rem',
-          outline: 'none'
-        }}
+        uiSize="sm"
+        className="subject-picker-mobile__filter"
         value={subjectFilter}
         onChange={(e) => onSubjectFilterChange(e.target.value)}
       />
-      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+      <div className="subject-picker-mobile__count">
         {subjects.length} {subjects.length === 1 ? labels.subjectCountSingular : labels.subjectCountPlural}
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+      <div className="subject-picker-mobile__list">
         {subjects.map((subject) => {
           const colors = getSubjectColor(subject);
           return (
             <button
               key={subject}
-              className="btn"
+              className="btn subject-picker-mobile__subject-btn"
               onClick={() => onSubjectSelect(subject)}
               style={{
-                justifyContent: 'flex-start',
-                fontSize: '0.82rem',
-                padding: '0.45rem 0.6rem',
-                borderLeft: `4px solid ${colors.bg}`,
-                background: 'var(--card-bg)'
+                borderLeftColor: colors.bg
               }}
             >
               {subject}

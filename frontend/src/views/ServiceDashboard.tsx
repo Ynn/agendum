@@ -74,9 +74,6 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false, on
         exam: isMobile ? t.exam_short : t.exam,
         other: isMobile ? t.other_short : t.other
     };
-    const compactHead = isMobile ? { padding: '0.45rem 0.35rem', whiteSpace: 'nowrap' as const, minWidth: '5.5ch' } : {};
-    const compactHeadWide = isMobile ? { ...compactHead, minWidth: '6.5ch' } : compactHead;
-    const compactCell = isMobile ? { padding: '0.42rem 0.35rem' } : {};
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
@@ -232,41 +229,29 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false, on
     }, [baseEvents, cols, showEmpty, t.unknown_subject, selectedTeacher, splitTeacherNames, isUnknownTeacherToken, unknownTeacherLabel]);
 
     return (
-        <div className="service-dashboard fade-in page-scroll" style={{ height: '100%', minHeight: 0, overflowY: 'auto', paddingRight: isMobile ? '0.15rem' : '0.25rem' }}>
+        <div className={`service-dashboard fade-in page-scroll ${isMobile ? 'service-dashboard--mobile' : ''}`}>
             {/* Controls */}
-            <div className="card" style={{ padding: isMobile ? '0.4rem 0.5rem' : '0.55rem 0.75rem', marginBottom: '0.6rem', display: 'flex', flexWrap: 'wrap', gap: isMobile ? '0.5rem' : '0.8rem', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '0.5rem' : '0.8rem', flexWrap: 'wrap', flex: 1, minWidth: isMobile ? '100%' : 0 }}>
+            <div className={`card service-dashboard__controls ${isMobile ? 'service-dashboard__controls--mobile' : ''}`}>
+                <div className={`service-dashboard__controls-left ${isMobile ? 'service-dashboard__controls-left--mobile' : ''}`}>
                     {selectedTeacher && (
-                        <div style={{ fontSize: isMobile ? '0.68rem' : '0.78rem', color: '#475569' }}>
+                        <div className={`service-dashboard__selected-teacher ${isMobile ? 'service-dashboard__selected-teacher--mobile' : ''}`}>
                             {t.teacher}: <strong>{selectedTeacher}</strong>
                         </div>
                     )}
-                    <div>
-                        <div style={{ display: 'flex', gap: isMobile ? '0.35rem' : '0.55rem', flexWrap: 'wrap' }}>
-                            {colKeys.map(key => (
-                                <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.28rem', cursor: 'pointer', textTransform: 'uppercase', fontSize: isMobile ? '0.64rem' : '0.72rem' }}>
-                                    <input type="checkbox" checked={cols[key]} onChange={e => setCols({ ...cols, [key]: e.target.checked })} />
-                                    {colLabels[key]}
-                                </label>
-                            ))}
-                        </div>
+                    <div className={`service-dashboard__col-toggles ${isMobile ? 'service-dashboard__col-toggles--mobile' : ''}`}>
+                        {colKeys.map(key => (
+                            <label key={key} className={`service-dashboard__col-toggle ${isMobile ? 'service-dashboard__col-toggle--mobile' : ''}`}>
+                                <input type="checkbox" checked={cols[key]} onChange={e => setCols({ ...cols, [key]: e.target.checked })} />
+                                {colLabels[key]}
+                            </label>
+                        ))}
                     </div>
                 </div>
-                <div
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: isMobile ? '0.3rem' : '0.5rem',
-                        flexWrap: 'wrap',
-                        width: isMobile ? '100%' : 'auto',
-                        marginLeft: isMobile ? 0 : 'auto',
-                        justifyContent: isMobile ? 'flex-start' : 'flex-end'
-                    }}
-                >
-                    <span style={{ fontSize: isMobile ? '0.68rem' : '0.76rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                <div className={`service-dashboard__scope ${isMobile ? 'service-dashboard__scope--mobile' : ''}`}>
+                    <span className={`service-dashboard__scope-label ${isMobile ? 'service-dashboard__scope-label--mobile' : ''}`}>
                         {t.service_period_label}
                     </span>
-                    <div style={{ display: 'flex', gap: isMobile ? '0.35rem' : '0.55rem', flexWrap: 'wrap' }}>
+                    <div className={`service-dashboard__scope-options ${isMobile ? 'service-dashboard__scope-options--mobile' : ''}`}>
                         {([
                             { key: 'total', label: t.service_period_total },
                             { key: 'done', label: t.service_period_done },
@@ -275,8 +260,7 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false, on
                             <button
                                 key={opt.key}
                                 type="button"
-                                className={`btn ${serviceScope === opt.key ? 'btn-primary' : ''}`}
-                                style={{ padding: isMobile ? '0.18rem 0.45rem' : '0.22rem 0.55rem', fontSize: isMobile ? '0.68rem' : '0.74rem' }}
+                                className={`btn service-dashboard__scope-btn ${serviceScope === opt.key ? 'btn-primary' : ''} ${isMobile ? 'service-dashboard__scope-btn--mobile' : ''}`}
                                 onClick={() => setServiceScope(opt.key)}
                             >
                                 {opt.label}
@@ -288,78 +272,58 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false, on
 
             {teacherStats.length > 1 && (
                 <>
-                    <div style={{ fontSize: isMobile ? '0.68rem' : '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0.1rem 0 0.35rem 0.15rem', fontWeight: 600 }}>
+                    <div className={`service-dashboard__aggregate-label ${isMobile ? 'service-dashboard__aggregate-label--mobile' : ''}`}>
                         {lang === 'fr' ? 'Total de tous les services affichés' : 'Total of all displayed services'}
                     </div>
-                    <div className="card" style={{ padding: isMobile ? '0.4rem 0.5rem' : '0.55rem 0.75rem', marginBottom: '0.6rem' }}>
-                        <div style={{
-                            display: 'flex',
-                            gap: isMobile ? '0.7rem' : '1.1rem',
-                            flexWrap: 'wrap',
-                            padding: isMobile ? '0.4rem 0.5rem' : '0.55rem 0.7rem',
-                            background: 'var(--card-bg)',
-                            borderRadius: 'var(--radius)',
-                            boxShadow: 'var(--shadow-xs)'
-                        }}>
-                            <div style={{
-                                display: 'flex',
-                                gap: isMobile ? '0.6rem' : '0.35rem',
-                                flexWrap: 'wrap',
-                                width: isMobile ? '100%' : 'auto'
-                            }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                    <span style={{ fontSize: '1rem' }}>⏱️</span>
+                    <div className={`card service-dashboard__aggregate-card ${isMobile ? 'service-dashboard__aggregate-card--mobile' : ''}`}>
+                        <div className={`service-dashboard__summary-panel ${isMobile ? 'service-dashboard__summary-panel--mobile' : ''}`}>
+                            <div className={`service-dashboard__summary-core ${isMobile ? 'service-dashboard__summary-core--mobile' : ''}`}>
+                                <div className="service-dashboard__summary-stat">
+                                    <span className="service-dashboard__summary-icon">⏱️</span>
                                     <div>
-                                        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.total_core_label}</div>
-                                        <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-color)' }}>{summary.totalCore.toFixed(1)}h</div>
+                                        <div className="service-dashboard__summary-stat-label">{t.total_core_label}</div>
+                                        <div className="service-dashboard__summary-value">{summary.totalCore.toFixed(1)}h</div>
                                     </div>
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                    <span style={{ fontSize: '1rem' }}>∑</span>
+                                <div className="service-dashboard__summary-stat">
+                                    <span className="service-dashboard__summary-icon">∑</span>
                                     <div>
-                                        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.total_with_project_label}</div>
-                                        <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-color)' }}>{summary.totalTeaching.toFixed(1)}h</div>
+                                        <div className="service-dashboard__summary-stat-label">{t.total_with_project_label}</div>
+                                        <div className="service-dashboard__summary-value">{summary.totalTeaching.toFixed(1)}h</div>
                                     </div>
                                 </div>
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                <span style={{ fontSize: '1rem' }}>📖</span>
+                            <div className="service-dashboard__summary-stat">
+                                <span className="service-dashboard__summary-icon">📖</span>
                                 <div>
-                                    <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>CM</div>
-                                    <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1e40af' }}>{summary.cm.toFixed(1)}h</div>
+                                    <div className="service-dashboard__summary-stat-label">CM</div>
+                                    <div className="service-dashboard__summary-value service-dashboard__summary-value--cm">{summary.cm.toFixed(1)}h</div>
                                 </div>
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                <span style={{ fontSize: '1rem' }}>✏️</span>
+                            <div className="service-dashboard__summary-stat">
+                                <span className="service-dashboard__summary-icon">✏️</span>
                                 <div>
-                                    <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TD</div>
-                                    <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#166534' }}>{summary.td.toFixed(1)}h</div>
+                                    <div className="service-dashboard__summary-stat-label">TD</div>
+                                    <div className="service-dashboard__summary-value service-dashboard__summary-value--td">{summary.td.toFixed(1)}h</div>
                                 </div>
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                <span style={{ fontSize: '1rem' }}>🔬</span>
+                            <div className="service-dashboard__summary-stat">
+                                <span className="service-dashboard__summary-icon">🔬</span>
                                 <div>
-                                    <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TP</div>
-                                    <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#374151' }}>{summary.tp.toFixed(1)}h</div>
+                                    <div className="service-dashboard__summary-stat-label">TP</div>
+                                    <div className="service-dashboard__summary-value service-dashboard__summary-value--tp">{summary.tp.toFixed(1)}h</div>
                                 </div>
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                <span style={{ fontSize: '1rem' }}>🧩</span>
+                            <div className="service-dashboard__summary-stat">
+                                <span className="service-dashboard__summary-icon">🧩</span>
                                 <div>
-                                    <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.project}</div>
-                                    <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#7c3aed' }}>{summary.project.toFixed(1)}h</div>
+                                    <div className="service-dashboard__summary-stat-label">{t.project}</div>
+                                    <div className="service-dashboard__summary-value service-dashboard__summary-value--project">{summary.project.toFixed(1)}h</div>
                                 </div>
                             </div>
-                            <div style={{
-                                marginLeft: 'auto',
-                                minWidth: isMobile ? '100%' : '260px',
-                                color: 'var(--text-muted)',
-                                fontSize: isMobile ? '0.68rem' : '0.74rem',
-                                borderLeft: isMobile ? '0' : '1px solid var(--border-color)',
-                                paddingLeft: isMobile ? '0' : '0.8rem'
-                            }}>
-                                <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{lang === 'fr' ? 'Non compté' : 'Not counted'}</div>
-                                <div style={{ display: 'flex', gap: '0.7rem', flexWrap: 'wrap' }}>
+                            <div className={`service-dashboard__summary-extra ${isMobile ? 'service-dashboard__summary-extra--mobile' : ''}`}>
+                                <div className="service-dashboard__summary-extra-title">{lang === 'fr' ? 'Non compté' : 'Not counted'}</div>
+                                <div className="service-dashboard__summary-extra-list">
                                     <div>🧪 {t.exam}: {summary.exam.toFixed(1)}h</div>
                                     <div>🗓️ {t.reunion}: {summary.reunion.toFixed(1)}h</div>
                                     <div>📌 {t.other}: {summary.other.toFixed(1)}h</div>
@@ -372,7 +336,7 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false, on
 
             {/* Teacher Sections */}
             {teacherStats.length === 0 ? (
-                <div className="card" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-light)' }}>
+                <div className="card service-dashboard__empty">
                     {t.no_events_service}
                 </div>
             ) : (
@@ -395,83 +359,63 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false, on
                         + (cols.other ? 1 : 0);
                     const tableMinWidth = isMobile ? `calc(${subjectColWidth} + ${numericCols * 6.5}ch)` : '100%';
                     return (
-                        <section key={teacher.name} className="card" style={{ padding: '0', marginBottom: '2rem', overflow: 'hidden' }}>
-                            <div style={{ background: 'var(--bg-secondary)', padding: isMobile ? '0.55rem 0.7rem' : '1rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <h2 style={{ margin: 0, fontSize: isMobile ? '0.9rem' : '1.25rem' }}>{teacher.name}</h2>
-                                <div style={{ fontSize: isMobile ? '0.88rem' : '1.2rem', fontWeight: 700, color: 'var(--primary-color)' }}>
+                        <section key={teacher.name} className="card service-dashboard__teacher-section">
+                            <div className={`service-dashboard__teacher-header ${isMobile ? 'service-dashboard__teacher-header--mobile' : ''}`}>
+                                <h2 className={`service-dashboard__teacher-name ${isMobile ? 'service-dashboard__teacher-name--mobile' : ''}`}>{teacher.name}</h2>
+                                <div className={`service-dashboard__teacher-total ${isMobile ? 'service-dashboard__teacher-total--mobile' : ''}`}>
                                     {teacher.grandTotal.toFixed(1)} h
                                 </div>
                             </div>
 
-                            <div style={{ padding: isMobile ? '0.45rem 0.55rem' : '0.7rem 1.2rem', borderBottom: '1px solid var(--border-color)', background: 'var(--card-bg)' }}>
-                                <div style={{
-                                    display: 'flex',
-                                    gap: isMobile ? '0.6rem' : '1.1rem',
-                                    flexWrap: 'wrap',
-                                    padding: isMobile ? '0.35rem 0.4rem' : '0.45rem 0.6rem',
-                                    background: 'var(--card-bg)',
-                                    borderRadius: 'var(--radius)',
-                                    boxShadow: 'var(--shadow-xs)'
-                                }}>
-                                    <div style={{
-                                        display: 'flex',
-                                        gap: isMobile ? '0.6rem' : '0.35rem',
-                                        flexWrap: 'wrap',
-                                        width: isMobile ? '100%' : 'auto'
-                                    }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                            <span style={{ fontSize: '1rem' }}>⏱️</span>
+                            <div className={`service-dashboard__teacher-summary-wrap ${isMobile ? 'service-dashboard__teacher-summary-wrap--mobile' : ''}`}>
+                                <div className={`service-dashboard__summary-panel ${isMobile ? 'service-dashboard__summary-panel--mobile' : ''}`}>
+                                    <div className={`service-dashboard__summary-core ${isMobile ? 'service-dashboard__summary-core--mobile' : ''}`}>
+                                        <div className="service-dashboard__summary-stat">
+                                            <span className="service-dashboard__summary-icon">⏱️</span>
                                             <div>
-                                                <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.total_core_label}</div>
-                                                <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-color)' }}>{totalCore.toFixed(1)}h</div>
+                                                <div className="service-dashboard__summary-stat-label">{t.total_core_label}</div>
+                                                <div className="service-dashboard__summary-value service-dashboard__summary-value--teacher">{totalCore.toFixed(1)}h</div>
                                             </div>
                                         </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                            <span style={{ fontSize: '1rem' }}>∑</span>
+                                        <div className="service-dashboard__summary-stat">
+                                            <span className="service-dashboard__summary-icon">∑</span>
                                             <div>
-                                                <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.total_with_project_label}</div>
-                                                <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-color)' }}>{totalTeaching.toFixed(1)}h</div>
+                                                <div className="service-dashboard__summary-stat-label">{t.total_with_project_label}</div>
+                                                <div className="service-dashboard__summary-value service-dashboard__summary-value--teacher">{totalTeaching.toFixed(1)}h</div>
                                             </div>
                                         </div>
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                        <span style={{ fontSize: '1rem' }}>📖</span>
+                                    <div className="service-dashboard__summary-stat">
+                                        <span className="service-dashboard__summary-icon">📖</span>
                                         <div>
-                                            <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>CM</div>
-                                            <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#1e40af' }}>{totals.cm.toFixed(1)}h</div>
+                                            <div className="service-dashboard__summary-stat-label">CM</div>
+                                            <div className="service-dashboard__summary-value service-dashboard__summary-value--teacher service-dashboard__summary-value--cm">{totals.cm.toFixed(1)}h</div>
                                         </div>
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                        <span style={{ fontSize: '1rem' }}>✏️</span>
+                                    <div className="service-dashboard__summary-stat">
+                                        <span className="service-dashboard__summary-icon">✏️</span>
                                         <div>
-                                            <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TD</div>
-                                            <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#166534' }}>{totals.td.toFixed(1)}h</div>
+                                            <div className="service-dashboard__summary-stat-label">TD</div>
+                                            <div className="service-dashboard__summary-value service-dashboard__summary-value--teacher service-dashboard__summary-value--td">{totals.td.toFixed(1)}h</div>
                                         </div>
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                        <span style={{ fontSize: '1rem' }}>🔬</span>
+                                    <div className="service-dashboard__summary-stat">
+                                        <span className="service-dashboard__summary-icon">🔬</span>
                                         <div>
-                                        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TP</div>
-                                        <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#374151' }}>{totals.tp.toFixed(1)}h</div>
+                                            <div className="service-dashboard__summary-stat-label">TP</div>
+                                            <div className="service-dashboard__summary-value service-dashboard__summary-value--teacher service-dashboard__summary-value--tp">{totals.tp.toFixed(1)}h</div>
+                                        </div>
                                     </div>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                    <span style={{ fontSize: '1rem' }}>🧩</span>
-                                    <div>
-                                        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.project}</div>
-                                        <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#7c3aed' }}>{totals.project.toFixed(1)}h</div>
+                                    <div className="service-dashboard__summary-stat">
+                                        <span className="service-dashboard__summary-icon">🧩</span>
+                                        <div>
+                                            <div className="service-dashboard__summary-stat-label">{t.project}</div>
+                                            <div className="service-dashboard__summary-value service-dashboard__summary-value--teacher service-dashboard__summary-value--project">{totals.project.toFixed(1)}h</div>
+                                        </div>
                                     </div>
-                                </div>
-                                <div style={{
-                                    marginLeft: 'auto',
-                                    minWidth: isMobile ? '100%' : '260px',
-                                        color: 'var(--text-muted)',
-                                        fontSize: isMobile ? '0.68rem' : '0.74rem',
-                                        borderLeft: isMobile ? '0' : '1px solid var(--border-color)',
-                                        paddingLeft: isMobile ? '0' : '0.8rem'
-                                    }}>
-                                        <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{lang === 'fr' ? 'Non compté' : 'Not counted'}</div>
-                                        <div style={{ display: 'flex', gap: '0.7rem', flexWrap: 'wrap' }}>
+                                    <div className={`service-dashboard__summary-extra ${isMobile ? 'service-dashboard__summary-extra--mobile' : ''}`}>
+                                        <div className="service-dashboard__summary-extra-title">{lang === 'fr' ? 'Non compté' : 'Not counted'}</div>
+                                        <div className="service-dashboard__summary-extra-list">
                                             <div>🧪 {t.exam}: {totals.exam.toFixed(1)}h</div>
                                             <div>🗓️ {t.reunion}: {totals.reunion.toFixed(1)}h</div>
                                             <div>📌 {t.other}: {totals.other.toFixed(1)}h</div>
@@ -481,57 +425,37 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false, on
                             </div>
 
                             <div className="table-container service-table-container">
-                                <table style={{ width: '100%', tableLayout: isMobile ? 'fixed' : 'auto', minWidth: tableMinWidth }}>
+                                <table className={`service-dashboard__table ${isMobile ? 'service-dashboard__table--mobile' : ''}`} style={{ minWidth: tableMinWidth }}>
                                     <thead>
-                                        <tr style={{ textAlign: 'left', background: 'var(--card-bg)', fontSize: isMobile ? '0.66rem' : undefined }}>
-                                            <th style={{
-                                                padding: isMobile ? '0.45rem 0.6rem' : '1rem 1.5rem',
+                                        <tr className={`service-dashboard__head-row ${isMobile ? 'service-dashboard__head-row--mobile' : ''}`}>
+                                            <th className={`service-dashboard__subject-head ${isMobile ? 'service-dashboard__subject-head--mobile' : ''}`} style={{
                                                 width: subjectColWidth,
                                                 maxWidth: subjectColWidth
                                             }}>
                                                 {isMobile ? t.subject_short : t.subject}
                                             </th>
-                                            {cols.cm && <th style={{ textAlign: 'right', ...compactHead }}>CM</th>}
-                                            {cols.td && <th style={{ textAlign: 'right', ...compactHead }}>TD</th>}
-                                            {cols.tp && <th style={{ textAlign: 'right', ...compactHead }}>TP</th>}
-                                            {cols.project && <th style={{ textAlign: 'right', ...compactHead }}>{isMobile ? t.project_short : t.project}</th>}
-                                            <th style={{ textAlign: 'right', padding: isMobile ? '0.45rem 0.6rem' : '1rem 1.5rem', paddingLeft: isMobile ? '0.35rem' : undefined, background: 'var(--bg-secondary)' }}>{isMobile ? t.total_short : t.total}</th>
-                                            {cols.exam && <th style={{ textAlign: 'right', ...compactHeadWide }}>{isMobile ? t.exam_short : t.exam}</th>}
-                                            {cols.reunion && <th style={{ textAlign: 'right', ...compactHeadWide }}>{t.reunion}</th>}
-                                            {cols.other && <th style={{ textAlign: 'right', ...compactHeadWide }}>{isMobile ? t.other_short : t.other}</th>}
+                                            {cols.cm && <th className={`service-dashboard__num-head ${isMobile ? 'service-dashboard__num-head--mobile' : ''}`}>CM</th>}
+                                            {cols.td && <th className={`service-dashboard__num-head ${isMobile ? 'service-dashboard__num-head--mobile' : ''}`}>TD</th>}
+                                            {cols.tp && <th className={`service-dashboard__num-head ${isMobile ? 'service-dashboard__num-head--mobile' : ''}`}>TP</th>}
+                                            {cols.project && <th className={`service-dashboard__num-head ${isMobile ? 'service-dashboard__num-head--mobile' : ''}`}>{isMobile ? t.project_short : t.project}</th>}
+                                            <th className={`service-dashboard__total-head ${isMobile ? 'service-dashboard__total-head--mobile' : ''}`}>{isMobile ? t.total_short : t.total}</th>
+                                            {cols.exam && <th className={`service-dashboard__num-head service-dashboard__num-head--wide ${isMobile ? 'service-dashboard__num-head--mobile' : ''}`}>{isMobile ? t.exam_short : t.exam}</th>}
+                                            {cols.reunion && <th className={`service-dashboard__num-head service-dashboard__num-head--wide ${isMobile ? 'service-dashboard__num-head--mobile' : ''}`}>{t.reunion}</th>}
+                                            {cols.other && <th className={`service-dashboard__num-head service-dashboard__num-head--wide ${isMobile ? 'service-dashboard__num-head--mobile' : ''}`}>{isMobile ? t.other_short : t.other}</th>}
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {teacher.subjectList.map(row => (
-                                            <tr key={row.name} style={{ borderTop: '1px solid var(--bg-secondary)', fontSize: isMobile ? '0.68rem' : undefined }}>
-                                                <td style={{
-                                                    padding: isMobile ? '0.42rem 0.6rem' : '0.8rem 1.5rem',
-                                                    fontWeight: 500,
+                                            <tr key={row.name} className={`service-dashboard__row ${isMobile ? 'service-dashboard__row--mobile' : ''}`}>
+                                                <td className={`service-dashboard__subject-cell ${isMobile ? 'service-dashboard__subject-cell--mobile' : ''}`} style={{
                                                     width: subjectColWidth,
-                                                    maxWidth: subjectColWidth,
-                                                    whiteSpace: isMobile ? 'nowrap' : undefined,
-                                                    overflow: isMobile ? 'hidden' : undefined,
-                                                    textOverflow: isMobile ? 'ellipsis' : undefined
+                                                    maxWidth: subjectColWidth
                                                 }}>
                                                     {onSelectSubject ? (
                                                         <button
                                                             type="button"
                                                             onClick={() => onSelectSubject(row.name)}
-                                                            style={{
-                                                                background: 'none',
-                                                                border: 'none',
-                                                                padding: 0,
-                                                            margin: 0,
-                                                            cursor: 'pointer',
-                                                            font: 'inherit',
-                                                            color: 'var(--primary-color)',
-                                                                textAlign: 'left',
-                                                                display: 'block',
-                                                                width: '100%',
-                                                                whiteSpace: 'inherit',
-                                                                overflow: 'hidden',
-                                                                textOverflow: 'ellipsis'
-                                                            }}
+                                                            className="service-dashboard__subject-link"
                                                         >
                                                             {row.name}
                                                         </button>
@@ -539,16 +463,16 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false, on
                                                         row.name
                                                     )}
                                                 </td>
-                                                {cols.cm && <td style={{ textAlign: 'right', ...compactCell }}>{row.cm > 0 ? row.cm.toFixed(1) : '-'}</td>}
-                                                {cols.td && <td style={{ textAlign: 'right', ...compactCell }}>{row.td > 0 ? row.td.toFixed(1) : '-'}</td>}
-                                                {cols.tp && <td style={{ textAlign: 'right', ...compactCell }}>{row.tp > 0 ? row.tp.toFixed(1) : '-'}</td>}
-                                                {cols.project && <td style={{ textAlign: 'right', ...compactCell }}>{row.project > 0 ? row.project.toFixed(1) : '-'}</td>}
-                                                <td style={{ textAlign: 'right', padding: isMobile ? '0.42rem 0.6rem' : '0.8rem 1.5rem', paddingLeft: isMobile ? '0.35rem' : undefined, fontWeight: 700, background: 'var(--bg-secondary)' }}>
+                                                {cols.cm && <td className={`service-dashboard__num-cell ${isMobile ? 'service-dashboard__num-cell--mobile' : ''}`}>{row.cm > 0 ? row.cm.toFixed(1) : '-'}</td>}
+                                                {cols.td && <td className={`service-dashboard__num-cell ${isMobile ? 'service-dashboard__num-cell--mobile' : ''}`}>{row.td > 0 ? row.td.toFixed(1) : '-'}</td>}
+                                                {cols.tp && <td className={`service-dashboard__num-cell ${isMobile ? 'service-dashboard__num-cell--mobile' : ''}`}>{row.tp > 0 ? row.tp.toFixed(1) : '-'}</td>}
+                                                {cols.project && <td className={`service-dashboard__num-cell ${isMobile ? 'service-dashboard__num-cell--mobile' : ''}`}>{row.project > 0 ? row.project.toFixed(1) : '-'}</td>}
+                                                <td className={`service-dashboard__total-cell ${isMobile ? 'service-dashboard__total-cell--mobile' : ''}`}>
                                                     {row.filteredTotal.toFixed(1)}
                                                 </td>
-                                                {cols.exam && <td style={{ textAlign: 'right', ...compactCell }}>{row.exam > 0 ? row.exam.toFixed(1) : '-'}</td>}
-                                                {cols.reunion && <td style={{ textAlign: 'right', ...compactCell }}>{row.reunion > 0 ? row.reunion.toFixed(1) : '-'}</td>}
-                                                {cols.other && <td style={{ textAlign: 'right', ...compactCell }}>{row.other > 0 ? row.other.toFixed(1) : '-'}</td>}
+                                                {cols.exam && <td className={`service-dashboard__num-cell ${isMobile ? 'service-dashboard__num-cell--mobile' : ''}`}>{row.exam > 0 ? row.exam.toFixed(1) : '-'}</td>}
+                                                {cols.reunion && <td className={`service-dashboard__num-cell ${isMobile ? 'service-dashboard__num-cell--mobile' : ''}`}>{row.reunion > 0 ? row.reunion.toFixed(1) : '-'}</td>}
+                                                {cols.other && <td className={`service-dashboard__num-cell ${isMobile ? 'service-dashboard__num-cell--mobile' : ''}`}>{row.other > 0 ? row.other.toFixed(1) : '-'}</td>}
                                             </tr>
                                         ))}
                                     </tbody>
@@ -559,7 +483,7 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false, on
                 })
             )}
 
-            <p style={{ textAlign: 'right', color: 'var(--text-muted)', fontSize: '0.85rem', padding: '0 1rem' }}>
+            <p className="service-dashboard__dedupe-note">
                 {t.smart_dedupe_note}
             </p>
         </div>

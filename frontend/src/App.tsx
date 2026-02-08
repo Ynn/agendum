@@ -375,7 +375,7 @@ function AppContent() {
         />
 
         <main className="main-content" style={{
-          padding: isMobile ? '0.2rem 0.3rem 72px' : '0.5rem 2.5vw 80px',
+          padding: isMobile ? '0.12rem 0.24rem var(--bottom-nav-offset)' : '0.5rem 2.5vw 80px',
           maxWidth: '100%',
           margin: '0 auto',
           width: '100%'
