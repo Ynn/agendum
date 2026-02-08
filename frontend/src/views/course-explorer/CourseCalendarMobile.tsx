@@ -17,6 +17,7 @@ interface Props {
   viewLabel: string;
   dayLetters: string[];
   onViewChange: (view: CalendarView) => void;
+  onEventClick: (sourceIndex: unknown) => void;
   onSwipeStart: (x: number, y: number) => void;
   onSwipeEnd: (x: number, y: number) => void;
   calendarRef: RefObject<FullCalendar | null>;
@@ -30,6 +31,7 @@ export function CourseCalendarMobile({
   viewLabel,
   dayLetters,
   onViewChange,
+  onEventClick,
   onSwipeStart,
   onSwipeEnd,
   calendarRef,
@@ -226,24 +228,39 @@ export function CourseCalendarMobile({
           }}
           eventContent={(arg) => {
             const title = `${arg.event.title || ''}`.trim();
+            const teacher = `${arg.event.extendedProps.teacher || ''}`.trim();
             const location = `${arg.event.extendedProps.location || ''}`.trim();
+            const durationHours = Number(arg.event.extendedProps.durationHours || 0);
 
             if (arg.view.type.includes('list')) {
               return { html: title };
             }
 
+            const showTeacher = arg.view.type.startsWith('timeGrid') && teacher && teacher !== '—' && durationHours >= 1;
+            const titleLineClamp = durationHours >= 2 ? 3 : 2;
+            const locationLineClamp = showTeacher ? (durationHours >= 2 ? 2 : 1) : 2;
+            const teacherLine = showTeacher
+              ? `<div class="fc-event-teacher" style="font-size: 0.6rem; opacity: 0.88; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${teacher}</div>`
+              : '';
             const locationLine = location
-              ? `<div class="fc-event-location" style="font-size: 0.6rem; opacity: 0.8; line-height: 1.1; white-space: normal; word-break: break-word; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">${location}</div>`
+              ? `<div class="fc-event-location" style="font-size: 0.6rem; opacity: 0.8; line-height: 1.1; white-space: normal; word-break: break-word; overflow: hidden; display: -webkit-box; -webkit-line-clamp: ${locationLineClamp}; -webkit-box-orient: vertical;">${location}</div>`
               : '';
 
             return {
               html: `
                 <div class="fc-event-main-frame" style="padding: 1px 3px; height: 100%; display: flex; flex-direction: column; gap: 1px; overflow: hidden;">
-                  <div class="fc-event-title fc-sticky" style="font-weight: 600; font-size: 0.68rem; line-height: 1.15; white-space: normal; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">${title}</div>
+                  <div class="fc-event-title fc-sticky" style="font-weight: 600; font-size: 0.68rem; line-height: 1.15; white-space: normal; overflow: hidden; display: -webkit-box; -webkit-line-clamp: ${titleLineClamp}; -webkit-box-orient: vertical;">${title}</div>
+                  ${teacherLine}
                   ${locationLine}
                 </div>
               `
             };
+          }}
+          eventClick={(arg) => {
+            onEventClick(arg.event.extendedProps.sourceIndex);
+          }}
+          eventDidMount={(arg) => {
+            arg.el.style.cursor = 'pointer';
           }}
           datesSet={(arg) => {
             const titleWithBadge = buildTitle(arg.view.type, arg.start, arg.end, arg.view.title);

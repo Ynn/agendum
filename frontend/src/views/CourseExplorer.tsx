@@ -2,7 +2,8 @@ import { useState, useMemo, useEffect, useRef, useCallback, type CSSProperties }
 import FullCalendar from '@fullcalendar/react';
 import type { EnrichedEvent } from '../types';
 import { useLang, useT } from '../i18n';
-import { getSubjectColor, getSubjectColorLight } from '../utils/colors';
+import { getSubjectColor, getSubjectColorLight, getTypeAdjustedColor } from '../utils/colors';
+import { computeSessionOrdinals, formatSessionLabel } from '../utils/sessionOrdinals';
 import { BreakdownCards } from './course-explorer/BreakdownCards';
 import { BreakdownTable } from './course-explorer/BreakdownTable';
 import { CourseCalendarDesktop } from './course-explorer/CourseCalendarDesktop';
@@ -250,6 +251,7 @@ export function CourseExplorer({
         if (breakdownScope === 'total') return courseEvents;
         return courseEvents.filter(ev => isEventInScope(ev, breakdownScope));
     }, [courseEvents, breakdownScope, isEventInScope]);
+    const sessionOrdinals = useMemo(() => computeSessionOrdinals(scopedCourseEvents), [scopedCourseEvents]);
 
     type Totals = {
         cm: number;
@@ -340,21 +342,43 @@ export function CourseExplorer({
     // Calendar Events Format
     const calendarEvents = useMemo(() => {
         const colors = subjectColors ?? getSubjectColor(selectedSubject);
-        return scopedCourseEvents.map(ev => {
+        return scopedCourseEvents.map((ev, sourceIndex) => {
+            const sessionInfo = sessionOrdinals.get(ev) ?? null;
+            const typeLabel = sessionInfo
+                ? formatSessionLabel(sessionInfo)
+                : `${ev.type_ || selectedSubject}`.trim();
+            const typeAdjustedColors = getTypeAdjustedColor(colors.bg, ev.type_ || '');
             return {
-                title: `${ev.type_ || selectedSubject}`.trim(),
+                title: typeLabel,
                 start: ev.start_iso,
                 end: ev.end_iso,
-                backgroundColor: colors.bg,
-                borderColor: colors.bg,
-                textColor: colors.text,
+                backgroundColor: typeAdjustedColors.bg,
+                borderColor: typeAdjustedColors.bg,
+                textColor: typeAdjustedColors.text,
                 extendedProps: {
+                    sourceIndex,
+                    teacher: ev.extractedTeacher,
+                    durationHours: ev.duration_hours || 0,
                     location: ev.raw.location,
-                    description: ev.raw.description
+                    description: ev.raw.description,
+                    sessionType: sessionInfo?.type || '',
+                    sessionOrdinal: sessionInfo?.ordinal || null,
                 }
             };
         });
-    }, [scopedCourseEvents, selectedSubject, subjectColors]);
+    }, [scopedCourseEvents, selectedSubject, subjectColors, sessionOrdinals]);
+
+    const openCalendarEvent = useCallback((sourceIndex: unknown) => {
+        const parsed = typeof sourceIndex === 'number'
+            ? sourceIndex
+            : typeof sourceIndex === 'string'
+                ? Number(sourceIndex)
+                : NaN;
+        if (!Number.isInteger(parsed) || parsed < 0) return;
+        const event = scopedCourseEvents[parsed];
+        if (!event) return;
+        setSelectedEvent(event);
+    }, [scopedCourseEvents]);
 
     if (isMobile) {
         return (
@@ -439,6 +463,7 @@ export function CourseExplorer({
                                     events={scopedCourseEvents}
                                     subjectColor={subjectColors?.bg || 'var(--primary-color)'}
                                     rawEventLabel={rawEventLabel}
+                                    sessionOrdinals={sessionOrdinals}
                                     formatDateWithDay={formatDateWithDay}
                                     formatTime={formatTime}
                                     splitTeachers={splitTeachers}
@@ -457,6 +482,7 @@ export function CourseExplorer({
                                     viewLabel={t.calendar_view_label}
                                     dayLetters={dayLetters}
                                     onViewChange={setMobileCalendarView}
+                                    onEventClick={openCalendarEvent}
                                     onSwipeStart={(x, y) => {
                                         mobileSwipeRef.current = { x, y };
                                     }}
@@ -586,6 +612,7 @@ export function CourseExplorer({
                                     events={scopedCourseEvents}
                                     subjectColor={subjectColors?.bg || 'var(--primary-color)'}
                                     rawEventLabel={rawEventLabel}
+                                    sessionOrdinals={sessionOrdinals}
                                     labels={{
                                         type: t.type,
                                         date: t.date,
@@ -609,6 +636,7 @@ export function CourseExplorer({
                                     events={calendarEvents}
                                     lang={lang}
                                     dayLetters={dayLetters}
+                                    onEventClick={openCalendarEvent}
                                 />
                             )}
 

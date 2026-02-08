@@ -1,9 +1,11 @@
 import type { EnrichedEvent } from '../../types';
+import { formatSessionLabel, type SessionOrdinalInfo } from '../../utils/sessionOrdinals';
 
 interface Props {
   events: EnrichedEvent[];
   subjectColor: string;
   rawEventLabel: string;
+  sessionOrdinals: Map<EnrichedEvent, SessionOrdinalInfo | null>;
   formatDateWithDay: (d?: Date) => string;
   formatTime: (d?: Date) => string;
   splitTeachers: (value?: string) => string[];
@@ -16,6 +18,7 @@ export function CourseEventListMobile({
   events,
   subjectColor,
   rawEventLabel,
+  sessionOrdinals,
   formatDateWithDay,
   formatTime,
   splitTeachers,
@@ -29,12 +32,14 @@ export function CourseEventListMobile({
         const promoText = event.promo || '—';
         const borderColor = getListBorderColor(event, subjectColor);
         const timeAccentColor = getTimeAccentColor(event.start_date);
+        const sessionInfo = sessionOrdinals.get(event) ?? null;
+        const typeLabel = sessionInfo ? formatSessionLabel(sessionInfo) : event.type_;
         return (
           <div key={index} className="card course-events-mobile__item" style={{ borderLeftColor: borderColor }}>
             <div className="course-events-mobile__top">
               <div className="course-events-mobile__meta">
                 <div className="course-events-mobile__type-row">
-                  <strong className="course-events-mobile__type">{event.type_}</strong>
+                  <strong className="course-events-mobile__type">{typeLabel}</strong>
                   <span
                     title={promoText}
                     className="course-events-mobile__promo"

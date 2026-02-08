@@ -1,31 +1,89 @@
 /**
- * Generate a deterministic color for a subject name
- * Uses a simple hash function to ensure the same subject always gets the same color
+ * Generate deterministic, readable colors for subject names.
+ * - Stable base color per subject (larger palette for better spread)
+ * - Optional slight type variation for CM/TD/TP readability in calendars
  */
 
-// Curated palette of colors with good contrast for text readability
 const COLOR_PALETTE = [
-    { bg: '#EF4444', text: '#FFFFFF' }, // Red
-    { bg: '#F97316', text: '#FFFFFF' }, // Orange
-    { bg: '#F59E0B', text: '#000000' }, // Amber
-    { bg: '#84CC16', text: '#000000' }, // Lime
-    { bg: '#10B981', text: '#FFFFFF' }, // Emerald
-    { bg: '#14B8A6', text: '#FFFFFF' }, // Teal
-    { bg: '#06B6D4', text: '#000000' }, // Cyan
-    { bg: '#3B82F6', text: '#FFFFFF' }, // Blue
-    { bg: '#6366F1', text: '#FFFFFF' }, // Indigo
-    { bg: '#8B5CF6', text: '#FFFFFF' }, // Violet
-    { bg: '#A855F7', text: '#FFFFFF' }, // Purple
-    { bg: '#D946EF', text: '#FFFFFF' }, // Fuchsia
-    { bg: '#EC4899', text: '#FFFFFF' }, // Pink
-    { bg: '#F43F5E', text: '#FFFFFF' }, // Rose
-    { bg: '#0EA5E9', text: '#FFFFFF' }, // Sky
-    { bg: '#22C55E', text: '#000000' }, // Green
-    { bg: '#EAB308', text: '#000000' }, // Yellow
-    { bg: '#DC2626', text: '#FFFFFF' }, // Red-700
-    { bg: '#7C3AED', text: '#FFFFFF' }, // Violet-600
-    { bg: '#059669', text: '#FFFFFF' }, // Emerald-600
+    '#EF4444',
+    '#F97316',
+    '#F59E0B',
+    '#EAB308',
+    '#84CC16',
+    '#65A30D',
+    '#22C55E',
+    '#16A34A',
+    '#10B981',
+    '#059669',
+    '#14B8A6',
+    '#0F766E',
+    '#06B6D4',
+    '#0891B2',
+    '#0EA5E9',
+    '#0284C7',
+    '#3B82F6',
+    '#2563EB',
+    '#1D4ED8',
+    '#4F46E5',
+    '#6366F1',
+    '#7C3AED',
+    '#8B5CF6',
+    '#A855F7',
+    '#9333EA',
+    '#C026D3',
+    '#D946EF',
+    '#EC4899',
+    '#DB2777',
+    '#F43F5E',
+    '#E11D48',
+    '#FB7185',
+    '#DC2626',
+    '#EA580C',
+    '#CA8A04',
+    '#BE123C',
+    '#9D174D',
+    '#BE185D',
+    '#7C2D12',
+    '#7F1D1D',
 ];
+
+const clampByte = (value: number) => Math.max(0, Math.min(255, Math.round(value)));
+
+const hexToRgb = (hex: string): { r: number; g: number; b: number } | null => {
+    const clean = hex.replace('#', '').trim();
+    if (!/^[0-9a-fA-F]{6}$/.test(clean)) return null;
+    return {
+        r: parseInt(clean.slice(0, 2), 16),
+        g: parseInt(clean.slice(2, 4), 16),
+        b: parseInt(clean.slice(4, 6), 16),
+    };
+};
+
+const rgbToHex = (r: number, g: number, b: number): string => {
+    const toHex = (value: number) => clampByte(value).toString(16).padStart(2, '0');
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase();
+};
+
+const mixHex = (hex: string, target: { r: number; g: number; b: number }, ratio: number): string => {
+    const rgb = hexToRgb(hex);
+    if (!rgb) return hex;
+    const t = Math.max(0, Math.min(1, ratio));
+    const r = rgb.r + (target.r - rgb.r) * t;
+    const g = rgb.g + (target.g - rgb.g) * t;
+    const b = rgb.b + (target.b - rgb.b) * t;
+    return rgbToHex(r, g, b);
+};
+
+const darkenHex = (hex: string, ratio: number) => mixHex(hex, { r: 0, g: 0, b: 0 }, ratio);
+const lightenHex = (hex: string, ratio: number) => mixHex(hex, { r: 255, g: 255, b: 255 }, ratio);
+
+const getReadableTextColor = (bgHex: string): '#000000' | '#FFFFFF' => {
+    const rgb = hexToRgb(bgHex);
+    if (!rgb) return '#FFFFFF';
+    // YIQ luma approximation for quick readable foreground choice
+    const yiq = ((rgb.r * 299) + (rgb.g * 587) + (rgb.b * 114)) / 1000;
+    return yiq >= 150 ? '#000000' : '#FFFFFF';
+};
 
 /**
  * Simple hash function for strings
@@ -52,7 +110,8 @@ export function getSubjectColor(subject: string): { bg: string; text: string } {
 
     const hash = hashString(subject.trim().toLowerCase());
     const index = hash % COLOR_PALETTE.length;
-    return COLOR_PALETTE[index];
+    const bg = COLOR_PALETTE[index];
+    return { bg, text: getReadableTextColor(bg) };
 }
 
 /**
@@ -66,4 +125,23 @@ export function getSubjectColorLight(subject: string): string {
     const g = parseInt(hex.substring(2, 4), 16);
     const b = parseInt(hex.substring(4, 6), 16);
     return `rgba(${r}, ${g}, ${b}, 0.1)`;
+}
+
+/**
+ * Slightly adjust a base subject color by course type:
+ * - CM: darker
+ * - TD: base
+ * - TP: lighter
+ */
+export function getTypeAdjustedColor(baseBg: string, rawType: string): { bg: string; text: string } {
+    const upper = (rawType || '').toUpperCase();
+    let bg = baseBg;
+
+    if (upper.includes('CM')) {
+        bg = darkenHex(baseBg, 0.14);
+    } else if (upper.includes('TP')) {
+        bg = lightenHex(baseBg, 0.14);
+    }
+
+    return { bg, text: getReadableTextColor(bg) };
 }

@@ -8,7 +8,13 @@ import type { EventApi } from '@fullcalendar/core';
 import type { EnrichedEvent } from '../types';
 import frLocale from '@fullcalendar/core/locales/fr';
 import { useLang, useT } from '../i18n';
-import { getSubjectColor } from '../utils/colors';
+import { getSubjectColor, getTypeAdjustedColor } from '../utils/colors';
+import {
+    computeSessionOrdinals,
+    formatSessionLabel,
+    getCoreSessionType,
+    type SessionOrdinalInfo,
+} from '../utils/sessionOrdinals';
 
 const pad2 = (n: number) => n.toString().padStart(2, '0');
 const toDateInput = (date: Date) => `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
@@ -344,14 +350,18 @@ export function Agenda({
             max: toSlotTime(maxMinutes),
         };
     }, [events]);
+    const sessionOrdinals = useMemo(() => computeSessionOrdinals(events), [events]);
 
-    const getAgendaTypePrefix = (rawType: string) => {
+    const getAgendaTypePrefix = (rawType: string, sessionInfo: SessionOrdinalInfo | null) => {
         const trimmed = (rawType || '').trim();
         const upper = trimmed.toUpperCase();
         if (!upper) return '';
-        if (upper.includes('CM')) return 'CM';
-        if (upper.includes('TD')) return 'TD';
-        if (upper.includes('TP')) return 'TP';
+
+        const coreType = getCoreSessionType(upper);
+        if (coreType) {
+            if (!sessionInfo) return coreType;
+            return formatSessionLabel(sessionInfo);
+        }
         if (upper.includes('PROJET') || upper.includes('PROJECT')) return 'PJ';
         if (upper.includes('AUTRE') || upper.includes('RÉUNION') || upper.includes('REUNION')) return '';
         return trimmed;
@@ -360,9 +370,11 @@ export function Agenda({
     // Map events to FullCalendar format with deterministic subject colors
     const fcEvents = eventsForView.map(ev => {
         const subjectColors = getSubjectColor(ev.subject || '');
+        const typeAdjustedColors = getTypeAdjustedColor(subjectColors.bg, ev.type_ || '');
         const teacher = ev.extractedTeacher || '';
         const location = ev.raw.location || '';
-        const typePrefix = getAgendaTypePrefix(ev.type_ || '');
+        const sessionInfo = sessionOrdinals.get(ev) ?? null;
+        const typePrefix = getAgendaTypePrefix(ev.type_ || '', sessionInfo);
         const subject = (ev.subject || '').trim();
 
         // Build compact title: "TYPE Subject • Teacher • Room"
@@ -379,9 +391,9 @@ export function Agenda({
             title,
             start: ev.start_iso, // ISO string from Rust
             end: ev.end_iso,
-            backgroundColor: subjectColors.bg,
-            borderColor: subjectColors.bg,
-            textColor: subjectColors.text,
+            backgroundColor: typeAdjustedColors.bg,
+            borderColor: typeAdjustedColors.bg,
+            textColor: typeAdjustedColors.text,
             extendedProps: {
                 location: ev.raw.location,
                 description: ev.raw.description,

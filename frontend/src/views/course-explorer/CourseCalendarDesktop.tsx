@@ -33,9 +33,10 @@ interface Props {
   events: EventInput[];
   lang: 'fr' | 'en';
   dayLetters: string[];
+  onEventClick: (sourceIndex: unknown) => void;
 }
 
-export function CourseCalendarDesktop({ events, lang, dayLetters }: Props) {
+export function CourseCalendarDesktop({ events, lang, dayLetters, onEventClick }: Props) {
   const calendarRef = useRef<FullCalendar | null>(null);
   const titleRef = useRef<HTMLDivElement | null>(null);
   const measureCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -255,6 +256,56 @@ export function CourseCalendarDesktop({ events, lang, dayLetters }: Props) {
             const letter = dayLetters[arg.date.getDay()] || '';
             const dayNum = pad2(arg.date.getDate());
             return `${letter} ${dayNum}`;
+          }}
+          eventContent={(arg) => {
+            const title = `${arg.event.title || ''}`.trim();
+            const teacher = `${arg.event.extendedProps.teacher || ''}`.trim();
+            const location = `${arg.event.extendedProps.location || ''}`.trim();
+            const durationHours = Number(arg.event.extendedProps.durationHours || 0);
+
+            if (arg.view.type.includes('list')) {
+              return { html: title };
+            }
+
+            if (arg.view.type === 'dayGridMonth') {
+              return {
+                html: `
+                  <div class="fc-event-main-frame" style="padding: 1px 4px; height: 100%; display: flex; align-items: center; overflow: hidden;">
+                    <div class="fc-event-title fc-sticky" style="font-weight: 600; font-size: 0.79rem; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${title}</div>
+                  </div>
+                `
+              };
+            }
+
+            const showTeacher = teacher && teacher !== '—' && durationHours >= 1;
+            const showLocation = Boolean(location);
+            const titleLineClamp = durationHours >= 2 ? 3 : 2;
+            const teacherLine = showTeacher
+              ? `<div class="fc-event-teacher" style="font-size: 0.72rem; line-height: 1.2; opacity: 0.9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px;">${teacher}</div>`
+              : '';
+            const locationLine = showLocation
+              ? `<div class="fc-event-location" style="font-size: 0.68rem; line-height: 1.2; opacity: 0.82; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px;">${location}</div>`
+              : '';
+
+            return {
+              html: `
+                <div class="fc-event-main-frame" style="padding: 2px 4px; height: 100%; display: flex; flex-direction: column; overflow: hidden;">
+                  <div class="fc-event-title-container" style="flex-shrink: 0;">
+                    <div class="fc-event-title fc-sticky" style="font-weight: 600; font-size: 0.82rem; line-height: 1.15; white-space: normal; overflow: hidden; display: -webkit-box; -webkit-line-clamp: ${titleLineClamp}; -webkit-box-orient: vertical;">
+                      ${title}
+                    </div>
+                  </div>
+                  ${teacherLine}
+                  ${locationLine}
+                </div>
+              `
+            };
+          }}
+          eventClick={(arg) => {
+            onEventClick(arg.event.extendedProps.sourceIndex);
+          }}
+          eventDidMount={(arg) => {
+            arg.el.style.cursor = 'pointer';
           }}
           datesSet={(arg) => {
             const titleWithBadge = buildTitle(arg.view.type, arg.start, arg.end, arg.view.title);

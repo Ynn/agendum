@@ -1,9 +1,11 @@
 import type { EnrichedEvent } from '../../types';
+import { formatSessionLabel, type SessionOrdinalInfo } from '../../utils/sessionOrdinals';
 
 interface Props {
   events: EnrichedEvent[];
   subjectColor: string;
   rawEventLabel: string;
+  sessionOrdinals: Map<EnrichedEvent, SessionOrdinalInfo | null>;
   labels: {
     type: string;
     date: string;
@@ -25,6 +27,7 @@ export function CourseEventTableDesktop({
   events,
   subjectColor,
   rawEventLabel,
+  sessionOrdinals,
   labels,
   formatDateWithDay,
   formatTime,
@@ -59,6 +62,8 @@ export function CourseEventTableDesktop({
           {events.map((event, index) => {
             const borderColor = getListBorderColor(event, subjectColor);
             const timeAccentColor = getTimeAccentColor(event.start_date);
+            const sessionInfo = sessionOrdinals.get(event) ?? null;
+            const typeLabel = sessionInfo ? formatSessionLabel(sessionInfo) : event.type_;
             return (
               <tr
                 key={index}
@@ -66,8 +71,8 @@ export function CourseEventTableDesktop({
               >
                 <td className="course-events-table__cell course-events-table__cell--type" style={{ borderLeftColor: borderColor }}>
                   <div className="course-events-table__type-wrap">
-                    <span className={`course-events-table__type-badge course-events-table__type-badge--${getTypeTone(event.type_)}`}>
-                      {event.type_}
+                    <span className={`course-events-table__type-badge course-events-table__type-badge--${getTypeTone(typeLabel)}`}>
+                      {typeLabel}
                     </span>
                     <button
                       className="btn course-events-table__raw-btn"
