@@ -1,8 +1,8 @@
-import type { NormalizedEvent } from '../types';
+import type { EnrichedEvent } from '../types';
 import { useLang, useT } from '../i18n';
 
 interface Props {
-    events: NormalizedEvent[];
+    events: EnrichedEvent[];
     query: string;
     isMobile?: boolean;
 }
@@ -41,16 +41,16 @@ export function SearchResults({ events, query, isMobile = false }: Props) {
                     {events.map((ev, i) => (
                         <div key={i} className="card" style={{ padding: '0.65rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.4rem' }}>
-                                <div style={{ width: 10, height: 10, borderRadius: '50%', background: (ev as any).color || '#ccc', flexShrink: 0 }}></div>
+                                <div style={{ width: 10, height: 10, borderRadius: '50%', background: ev.color || '#ccc', flexShrink: 0 }}></div>
                                 <div style={{ fontWeight: 700, fontSize: '0.92rem', lineHeight: 1.2 }}>{ev.subject}</div>
                             </div>
                             <div style={{ fontSize: '0.8rem', color: '#334155', display: 'grid', gap: '0.25rem' }}>
                                 <div><strong>{t.type}:</strong> {ev.type_}</div>
-                                <div><strong>{t.date}:</strong> {formatDate((ev as any).start_date)}</div>
-                                <div><strong>{t.time}:</strong> {formatTime((ev as any).start_date)} - {formatTime((ev as any).end_date)}</div>
-                                <div><strong>{t.teacher}:</strong> {(ev as any).extractedTeacher || t.unknown_teacher}</div>
+                                <div><strong>{t.date}:</strong> {formatDate(ev.start_date)}</div>
+                                <div><strong>{t.time}:</strong> {formatTime(ev.start_date)} - {formatTime(ev.end_date)}</div>
+                                <div><strong>{t.teacher}:</strong> {ev.extractedTeacher || t.unknown_teacher}</div>
                                 <div><strong>{t.location}:</strong> {ev.raw.location || '-'}</div>
-                                <div style={{ color: 'var(--text-muted)' }}><strong>{t.calendar_source}:</strong> {(ev as any).calendarName}</div>
+                                <div style={{ color: 'var(--text-muted)' }}><strong>{t.calendar_source}:</strong> {ev.calendarName}</div>
                             </div>
                         </div>
                     ))}
@@ -74,14 +74,14 @@ export function SearchResults({ events, query, isMobile = false }: Props) {
                                 <tr key={i}>
                                     <td style={{ fontWeight: 600 }}>{ev.subject}</td>
                                     <td>{ev.type_}</td>
-                                    <td>{formatDate((ev as any).start_date)}</td>
-                                    <td>{formatTime((ev as any).start_date)} - {formatTime((ev as any).end_date)}</td>
-                                    <td>{(ev as any).extractedTeacher || t.unknown_teacher}</td>
+                                    <td>{formatDate(ev.start_date)}</td>
+                                    <td>{formatTime(ev.start_date)} - {formatTime(ev.end_date)}</td>
+                                    <td>{ev.extractedTeacher || t.unknown_teacher}</td>
                                     <td>{ev.raw.location || '-'}</td>
                                     <td>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                            <div style={{ width: 10, height: 10, borderRadius: '50%', background: (ev as any).color || '#ccc' }}></div>
-                                            {(ev as any).calendarName}
+                                            <div style={{ width: 10, height: 10, borderRadius: '50%', background: ev.color || '#ccc' }}></div>
+                                            {ev.calendarName}
                                         </div>
                                     </td>
                                 </tr>

@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import type { NormalizedEvent } from '../types';
+import type { EnrichedEvent } from '../types';
 import { useLang, useT } from '../i18n';
 
 interface Props {
-    events: NormalizedEvent[];
+    events: EnrichedEvent[];
     selectedTeacher?: string;
     isMobile?: boolean;
     onSelectSubject?: (subject: string) => void;
@@ -90,7 +90,7 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false, on
             : (() => {
                 const target = selectedTeacher.toLowerCase();
                 return events.filter(ev => {
-                    const teacherStr = ((ev as any).extractedTeacher || '').toLowerCase();
+                    const teacherStr = (ev.extractedTeacher || '').toLowerCase();
                     const teacherTokens = splitTeacherNames(teacherStr);
                     const matchesSelected = teacherTokens.some(name => name.toLowerCase() === target);
                     const isUnknown = teacherTokens.length === 0 || teacherTokens.every(isUnknownTeacherToken);
@@ -101,8 +101,8 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false, on
         if (serviceScope === 'total') return teacherFiltered;
 
         return teacherFiltered.filter(ev => {
-            const start = (ev as any).start_date as Date | undefined;
-            const end = (ev as any).end_date as Date | undefined;
+            const start = ev.start_date;
+            const end = ev.end_date;
             const startMs = start?.getTime();
             const endMs = end?.getTime();
 
@@ -119,7 +119,7 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false, on
     const summary = useMemo(() => {
         const totals = { cm: 0, td: 0, tp: 0, project: 0, reunion: 0, exam: 0, other: 0 };
         baseEvents.forEach(ev => {
-            if ((ev as any).is_duplicate) return;
+            if (ev.is_duplicate) return;
             const duration = ev.duration_hours || 0;
             const type = (ev.type_ || '').toUpperCase();
             if (type.includes('CM')) totals.cm += duration;
@@ -143,9 +143,9 @@ export function ServiceDashboard({ events, selectedTeacher, isMobile = false, on
             // But only for the same teacher! 
             // The is_duplicate flag from App.tsx assumes if same time/subject/type 
             // it's likely a duplicate across promo calendars.
-            if ((ev as any).is_duplicate) return;
+            if (ev.is_duplicate) return;
 
-            const teacherStr = ((ev as any).extractedTeacher || '').trim();
+            const teacherStr = (ev.extractedTeacher || '').trim();
             const teacherTokens = splitTeacherNames(teacherStr);
             const matchesSelected = selectedTeacher
                 ? teacherTokens.some(name => name.toLowerCase() === selectedTeacher.toLowerCase())

@@ -4,7 +4,8 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import listPlugin from '@fullcalendar/list';
 import interactionPlugin from '@fullcalendar/interaction';
-import type { NormalizedEvent } from '../types';
+import type { EventApi } from '@fullcalendar/core';
+import type { EnrichedEvent } from '../types';
 import frLocale from '@fullcalendar/core/locales/fr';
 import { useLang, useT } from '../i18n';
 import { getSubjectColor } from '../utils/colors';
@@ -55,7 +56,7 @@ export function Agenda({
     events,
     isMobile = false
 }: {
-    events: (NormalizedEvent & { color?: string })[];
+    events: EnrichedEvent[];
     isMobile?: boolean;
 }) {
     const lang = useLang();
@@ -66,7 +67,7 @@ export function Agenda({
     const [currentView, setCurrentView] = useState('timeGridWeek');
     const [currentTitle, setCurrentTitle] = useState('');
     const [weekValue, setWeekValue] = useState('');
-    const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
+    const [selectedEvent, setSelectedEvent] = useState<EventApi | null>(null);
     const [listRange, setListRange] = useState<{ start: string; end: string; enabled: boolean }>({
         start: '',
         end: '',
@@ -203,8 +204,8 @@ export function Agenda({
         const endExclusive = new Date(end);
         endExclusive.setDate(endExclusive.getDate() + 1);
         return events.filter(ev => {
-            const startAt = (ev as any).start_date ? new Date((ev as any).start_date) : new Date(ev.start_iso);
-            const endAt = (ev as any).end_date ? new Date((ev as any).end_date) : new Date(ev.end_iso);
+            const startAt = ev.start_date ? new Date(ev.start_date) : new Date(ev.start_iso);
+            const endAt = ev.end_date ? new Date(ev.end_date) : new Date(ev.end_iso);
             if (Number.isNaN(startAt.getTime()) || Number.isNaN(endAt.getTime())) return false;
             return startAt < endExclusive && endAt >= start;
         });
@@ -213,7 +214,7 @@ export function Agenda({
     // Map events to FullCalendar format with deterministic subject colors
     const fcEvents = eventsForView.map(ev => {
         const subjectColors = getSubjectColor(ev.subject || '');
-        const teacher = (ev as any).extractedTeacher || '';
+        const teacher = ev.extractedTeacher || '';
         const location = ev.raw.location || '';
 
         // Build compact title: "TYPE Subject • Teacher • Room"

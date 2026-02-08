@@ -1,20 +1,28 @@
 import { useRef, useState } from 'react';
-import { parse_and_normalize } from '../pkg/agendum_core';
-import type { NormalizedEvent } from '../types';
-import { useT } from '../i18n';
+import type { NormalizedEvent, ParseAndNormalizeDetailedResult } from '../types';
+import { useLang, useT } from '../i18n';
 import { QrScannerModal } from './QrScannerModal';
+import { buildParserFatalMessage, buildParserWarningMessage } from '../utils/parseDiagnostics';
 
 interface Props {
     isMobile?: boolean;
-    onImport: (name: string, events: NormalizedEvent[], isService: boolean) => void;
+    onImport: (name: string, events: NormalizedEvent[], isService: boolean, warning?: string | null) => void;
+    parseIcsDetailed: (content: string) => Promise<ParseAndNormalizeDetailedResult>;
     onImportFromUrl: (url: string, name: string, isService: boolean) => Promise<void>;
     onCancel: () => void;
 }
 
-export function ImportZone({ isMobile = false, onImport, onImportFromUrl, onCancel }: Props) {
+export function ImportZone({
+    isMobile = false,
+    onImport,
+    parseIcsDetailed,
+    onImportFromUrl,
+    onCancel
+}: Props) {
     const [active, setActive] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [warning, setWarning] = useState<string | null>(null);
     const [type, setType] = useState<'teacher' | 'resource'>('teacher');
     const [sourceMode, setSourceMode] = useState<'file' | 'url'>('file');
     const [calendarUrl, setCalendarUrl] = useState('');
@@ -22,6 +30,7 @@ export function ImportZone({ isMobile = false, onImport, onImportFromUrl, onCanc
     const [showScanner, setShowScanner] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const t = useT();
+    const lang = useLang();
 
     const isIcsFile = (file: File) => file.name.toLowerCase().endsWith('.ics');
 
@@ -32,17 +41,26 @@ export function ImportZone({ isMobile = false, onImport, onImportFromUrl, onCanc
         }
         setLoading(true);
         setError(null);
+        setWarning(null);
         const reader = new FileReader();
         reader.onload = async (e) => {
             try {
                 const text = e.target?.result as string;
-                // Parse + normalize using WASM for consistent typing and durations
-                const events = parse_and_normalize(text);
+                const parsed = await parseIcsDetailed(text);
+                const events = Array.isArray(parsed?.events) ? parsed.events : [];
+                const diagnostics = parsed?.diagnostics;
+                const warningMessage = buildParserWarningMessage(diagnostics, lang);
+                if (diagnostics?.parser_errors && events.length === 0) {
+                    throw new Error(buildParserFatalMessage(diagnostics, lang, 'file'));
+                }
+                if (warningMessage) {
+                    setWarning(warningMessage);
+                }
                 const name = calendarName.trim() || file.name.replace('.ics', '');
-                onImport(name, events, type === 'teacher'); // Pass stats flag
+                onImport(name, events, type === 'teacher', warningMessage);
             } catch (err) {
                 console.error(err);
-                setError(t.error_parse);
+                setError(err instanceof Error ? err.message : t.error_parse);
             } finally {
                 setLoading(false);
             }
@@ -64,6 +82,7 @@ export function ImportZone({ isMobile = false, onImport, onImportFromUrl, onCanc
 
         setLoading(true);
         setError(null);
+        setWarning(null);
         try {
             const name = calendarName.trim();
             await onImportFromUrl(calendarUrl.trim(), name, type === 'teacher');
@@ -116,6 +135,20 @@ export function ImportZone({ isMobile = false, onImport, onImportFromUrl, onCanc
                         </span>
                     </div>
                     <button onClick={() => setError(null)} style={{ marginLeft: '0.5rem', background: 'none', border: 'none', cursor: 'pointer', color: '#b91c1c', fontSize: '1.2rem' }}>✕</button>
+                </div>
+            )}
+            {warning && (
+                <div style={{
+                    background: '#fffbeb',
+                    color: '#92400e',
+                    padding: '0.75rem',
+                    borderRadius: 'var(--radius)',
+                    marginBottom: '1rem',
+                    fontSize: '0.9rem',
+                    border: '1px solid #fcd34d',
+                    textAlign: 'left'
+                }}>
+                    <strong>{lang === 'fr' ? 'Avertissement' : 'Warning'}:</strong> {warning}
                 </div>
             )}
 

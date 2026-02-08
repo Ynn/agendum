@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { CalendarManager } from '../components/CalendarManager';
 import { ImportZone } from '../components/ImportZone';
 import { QrCodeModal } from '../components/QrCodeModal';
-import type { Calendar, NormalizedEvent } from '../types';
-import { useT } from '../i18n';
+import type { Calendar, NormalizedEvent, ParseAndNormalizeDetailedResult } from '../types';
+import { useLang, useT } from '../i18n';
 
 interface Props {
     calendars: Calendar[];
@@ -16,6 +16,7 @@ interface Props {
     onPurgeAll: () => Promise<void>;
     onOpenFix: () => void;
     onImport: (name: string, events: NormalizedEvent[], isService: boolean) => void;
+    parseIcsDetailed: (content: string) => Promise<ParseAndNormalizeDetailedResult>;
     onImportFromUrl: (url: string, name: string, isService: boolean) => Promise<void>;
     onRemove: (id: string) => void;
     onToggle: (id: string) => void;
@@ -35,6 +36,7 @@ export function Settings({
     onPurgeAll,
     onOpenFix,
     onImport,
+    parseIcsDetailed,
     onImportFromUrl,
     onRemove,
     onToggle,
@@ -44,12 +46,26 @@ export function Settings({
 }: Props) {
     const [showImport, setShowImport] = useState(false);
     const [qrValue, setQrValue] = useState<string | null>(null);
+    const [importNotice, setImportNotice] = useState<string | null>(null);
     const t = useT();
+    const lang = useLang();
     const repoUrl = 'https://github.com/Ynn/agendum';
 
     return (
         <div className="settings-view fade-in page-scroll" style={{ padding: isMobile ? '0.55rem' : '1rem', maxWidth: '100%', margin: '0 auto', height: '100%', overflowY: 'auto' }}>
             <h2 style={{ marginBottom: isMobile ? '0.9rem' : '2rem', fontSize: isMobile ? '1rem' : undefined }}>{t.settings_title}</h2>
+
+            {importNotice && (
+                <div className="card" style={{
+                    padding: isMobile ? '0.65rem' : '0.8rem',
+                    marginBottom: isMobile ? '0.7rem' : '1rem',
+                    background: '#fffbeb',
+                    border: '1px solid #fcd34d',
+                    color: '#92400e'
+                }}>
+                    <strong>{lang === 'fr' ? 'Avertissement' : 'Warning'}:</strong> {importNotice}
+                </div>
+            )}
 
             <section className="card" style={{ padding: isMobile ? '0.8rem' : '1.5rem', marginBottom: isMobile ? '0.7rem' : '2rem' }}>
                 <h3 style={{ marginTop: 0, fontSize: isMobile ? '0.92rem' : undefined }}>{t.teacher_identity}</h3>
@@ -188,9 +204,15 @@ export function Settings({
                 }}>
                     <ImportZone
                         isMobile={isMobile}
-                        onImport={(n, e, s) => { onImport(n, e, s); setShowImport(false); }}
+                        onImport={(n, e, s, warning) => {
+                            onImport(n, e, s);
+                            setImportNotice(warning || null);
+                            setShowImport(false);
+                        }}
+                        parseIcsDetailed={parseIcsDetailed}
                         onImportFromUrl={async (url, name, isService) => {
                             await onImportFromUrl(url, name, isService);
+                            setImportNotice(null);
                             setShowImport(false);
                         }}
                         onCancel={() => setShowImport(false)}

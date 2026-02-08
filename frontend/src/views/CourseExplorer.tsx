@@ -1,15 +1,22 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import FullCalendar from '@fullcalendar/react';
-import listPlugin from '@fullcalendar/list';
-import timeGridPlugin from '@fullcalendar/timegrid';
-import dayGridPlugin from '@fullcalendar/daygrid';
-import type { NormalizedEvent } from '../types';
-import frLocale from '@fullcalendar/core/locales/fr';
+import type { EnrichedEvent } from '../types';
 import { useLang, useT } from '../i18n';
 import { getSubjectColor, getSubjectColorLight } from '../utils/colors';
+import { BreakdownCards } from './course-explorer/BreakdownCards';
+import { BreakdownTable } from './course-explorer/BreakdownTable';
+import { CourseCalendarDesktop } from './course-explorer/CourseCalendarDesktop';
+import { CourseCalendarMobile } from './course-explorer/CourseCalendarMobile';
+import { CourseEventListMobile } from './course-explorer/CourseEventListMobile';
+import { CourseEventModal } from './course-explorer/CourseEventModal';
+import { CourseEventTableDesktop } from './course-explorer/CourseEventTableDesktop';
+import { CourseTabs, type CourseTab } from './course-explorer/CourseTabs';
+import { CourseSummary } from './course-explorer/CourseSummary';
+import { SubjectPickerMobile } from './course-explorer/SubjectPickerMobile';
+import { SubjectSidebarDesktop } from './course-explorer/SubjectSidebarDesktop';
 
 interface Props {
-    events: NormalizedEvent[];
+    events: EnrichedEvent[];
     isMobile?: boolean;
     isTablet?: boolean;
     selectedSubject: string;
@@ -25,10 +32,10 @@ export function CourseExplorer({
 }: Props) {
     const [subjectFilter, setSubjectFilter] = useState('');
     const [selectedCalendarId, setSelectedCalendarId] = useState('');
-    const [tab, setTab] = useState<'list' | 'calendar' | 'teachers' | 'promos' | 'rooms'>('list');
+    const [tab, setTab] = useState<CourseTab>('list');
     const [mobileCalendarView, setMobileCalendarView] = useState<'timeGridWeek' | 'dayGridMonth' | 'listWeek'>('timeGridWeek');
     const [breakdownScope, setBreakdownScope] = useState<'total' | 'done' | 'todo'>('total');
-    const [selectedEvent, setSelectedEvent] = useState<NormalizedEvent | null>(null);
+    const [selectedEvent, setSelectedEvent] = useState<EnrichedEvent | null>(null);
     const [nowTs, setNowTs] = useState(() => Date.now());
     const lang = useLang();
     const t = useT();
@@ -38,8 +45,8 @@ export function CourseExplorer({
     const calendarOptions = useMemo(() => {
         const map = new Map<string, string>();
         events.forEach(ev => {
-            const id = (ev as any).calendarId as string | undefined;
-            const name = (ev as any).calendarName as string | undefined;
+            const id = ev.calendarId;
+            const name = ev.calendarName;
             if (!id || !name) return;
             if (!map.has(id)) map.set(id, name);
         });
@@ -55,7 +62,7 @@ export function CourseExplorer({
 
     const filteredEvents = useMemo(() => {
         if (!selectedCalendarId) return events;
-        return events.filter(ev => (ev as any).calendarId === selectedCalendarId);
+        return events.filter(ev => ev.calendarId === selectedCalendarId);
     }, [events, selectedCalendarId]);
 
     // 1. Extract unique subjects and apply filter
@@ -94,8 +101,8 @@ export function CourseExplorer({
         const subjectEvents = filteredEvents
             .filter(ev => ev.subject === selectedSubject)
             .sort((a, b) => {
-                const aTs = (a as any).start_ts ?? 0;
-                const bTs = (b as any).start_ts ?? 0;
+                const aTs = a.start_ts ?? 0;
+                const bTs = b.start_ts ?? 0;
                 return aTs - bTs;
             });
 
@@ -110,16 +117,16 @@ export function CourseExplorer({
 
         // Merge mutualized duplicates: same teacher, time, and type should appear once
         // but keep all promos (comma-separated)
-        const merged = new Map<string, { base: NormalizedEvent; promos: Set<string> }>();
+        const merged = new Map<string, { base: EnrichedEvent; promos: Set<string> }>();
 
         subjectEvents.forEach(ev => {
-            const key = `${ev.start_iso}|${ev.end_iso}|${ev.type_}|${(ev as any).extractedTeacher || ''}`;
+            const key = `${ev.start_iso}|${ev.end_iso}|${ev.type_}|${ev.extractedTeacher || ''}`;
             let entry = merged.get(key);
             if (!entry) {
                 entry = { base: ev, promos: new Set<string>() };
                 merged.set(key, entry);
             }
-            addPromos(entry.promos, (ev as any).promo || '');
+            addPromos(entry.promos, ev.promo || '');
         });
 
         return Array.from(merged.values())
@@ -128,8 +135,8 @@ export function CourseExplorer({
                 promo: Array.from(promos).join(', ')
             }))
             .sort((a, b) => {
-                const aTs = (a as any).start_ts ?? 0;
-                const bTs = (b as any).start_ts ?? 0;
+                const aTs = a.start_ts ?? 0;
+                const bTs = b.start_ts ?? 0;
                 return aTs - bTs;
             });
     }, [selectedSubject, filteredEvents]);
@@ -172,19 +179,18 @@ export function CourseExplorer({
     }, []);
 
     const rawEventLabel = lang === 'fr' ? "Voir l'événement brut" : 'View raw event';
-    const calendarViewOptions = [
+    const calendarViewOptions: Array<{ value: 'timeGridWeek' | 'dayGridMonth' | 'listWeek'; label: string }> = [
         { value: 'timeGridWeek', label: t.calendar_view_week },
         { value: 'dayGridMonth', label: t.calendar_view_month },
         { value: 'listWeek', label: t.calendar_view_planning }
     ];
-    const pad2 = (n: number) => n.toString().padStart(2, '0');
     const dayLetters = lang === 'fr'
         ? ['D', 'L', 'M', 'M', 'J', 'V', 'S']
         : ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-    const isEventInScope = useCallback((ev: NormalizedEvent, scope: 'total' | 'done' | 'todo') => {
+    const isEventInScope = useCallback((ev: EnrichedEvent, scope: 'total' | 'done' | 'todo') => {
         if (scope === 'total') return true;
-        const start = (ev as any).start_date as Date | undefined;
-        const end = (ev as any).end_date as Date | undefined;
+        const start = ev.start_date;
+        const end = ev.end_date;
         const startMs = start?.getTime();
         const endMs = end?.getTime();
 
@@ -221,9 +227,9 @@ export function CourseExplorer({
 
         return `rgb(${indicatorRgb[0]}, ${indicatorRgb[1]}, ${indicatorRgb[2]})`;
     };
-    const getListBorderColor = (ev: NormalizedEvent, defaultColor: string) => {
-        const start = (ev as any).start_date as Date | undefined;
-        const end = (ev as any).end_date as Date | undefined;
+    const getListBorderColor = (ev: EnrichedEvent, defaultColor: string) => {
+        const start = ev.start_date;
+        const end = ev.end_date;
         if (!start || !end) return defaultColor;
 
         const startMs = start.getTime();
@@ -238,35 +244,6 @@ export function CourseExplorer({
         if (sameDay) return '#f59e0b'; // today
 
         return defaultColor; // future
-    };
-
-    const renderEventModal = () => {
-        if (!selectedEvent) return null;
-        const start = (selectedEvent as any).start_date as Date | undefined;
-        const end = (selectedEvent as any).end_date as Date | undefined;
-        const title = selectedEvent.raw.summary?.trim() ||
-            `${selectedEvent.type_} ${selectedEvent.subject || ''}`.trim() ||
-            t.unknown;
-
-        return (
-            <div className="event-modal-overlay">
-                <div className="event-modal-backdrop" onClick={() => setSelectedEvent(null)} />
-                <div className="card event-modal">
-                    <div className="event-modal-header">
-                        <div style={{ fontWeight: 700 }}>{title}</div>
-                        <button className="btn" onClick={() => setSelectedEvent(null)} style={{ padding: '0.2rem 0.6rem' }}>×</button>
-                    </div>
-                    <div className="event-modal-grid">
-                        <div><strong>{t.time}:</strong> {formatDateWithDay(start)} • {formatTime(start)} - {formatTime(end)}</div>
-                        <div><strong>{t.location}:</strong> {selectedEvent.raw.location || '—'}</div>
-                        <div><strong>{t.duration}:</strong> {selectedEvent.duration_hours}h</div>
-                    </div>
-                    <div style={{ marginTop: '0.6rem', fontSize: '0.9rem', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>
-                        {selectedEvent.raw.description || '—'}
-                    </div>
-                </div>
-            </div>
-        );
     };
 
     const scopedCourseEvents = useMemo(() => {
@@ -340,13 +317,13 @@ export function CourseExplorer({
             const dur = ev.duration_hours || 0;
             const bucket = getBucket(ev.type_ || '');
             if (tab === 'teachers') {
-                const teacherNames = splitTeachers((ev as any).extractedTeacher);
+                const teacherNames = splitTeachers(ev.extractedTeacher);
                 const targets = teacherNames.length > 0 ? teacherNames : [t.unknown];
                 targets.forEach(name => addForKey(name, bucket, dur));
                 return;
             }
             if (tab === 'promos') {
-                const promoNames = splitPromos((ev as any).promo);
+                const promoNames = splitPromos(ev.promo);
                 const targets = promoNames.length > 0 ? promoNames : [t.unknown];
                 targets.forEach(name => addForKey(name, bucket, dur));
                 return;
@@ -384,83 +361,26 @@ export function CourseExplorer({
             <>
             <div className="course-mobile fade-in page-scroll" style={{ height: '100%', minHeight: 0, overflowY: 'auto', padding: '0.35rem 0.2rem 0.6rem' }}>
                 {!selectedSubject ? (
-                    <div className="card" style={{ padding: '0.7rem', minHeight: 0 }}>
-                        <h3 style={{
-                            marginTop: 0,
-                            marginBottom: '0.6rem',
-                            fontSize: '0.95rem',
-                            fontWeight: 700,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.35rem'
-                        }}>
-                            <span>📚</span> {t.subjects}
-                        </h3>
-                        <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
-                            {t.calendar_filter_label}
-                        </label>
-                        <select
-                            value={selectedCalendarId}
-                            onChange={(e) => setSelectedCalendarId(e.target.value)}
-                            style={{
-                                width: '100%',
-                                padding: '0.45rem',
-                                marginBottom: '0.6rem',
-                                borderRadius: 'var(--radius)',
-                                border: '1px solid var(--border-color)',
-                                background: 'var(--card-bg)',
-                                color: 'var(--text-color)',
-                                fontSize: '0.8rem'
-                            }}
-                        >
-                            <option value="">{t.calendar_filter_all}</option>
-                            {calendarOptions.map(([id, name]) => (
-                                <option key={id} value={id}>{name}</option>
-                            ))}
-                        </select>
-                        <input
-                            type="text"
-                            placeholder={`🔍 ${t.filter_subjects}`}
-                            style={{
-                                padding: '0.55rem',
-                                marginBottom: '0.6rem',
-                                borderRadius: 'var(--radius)',
-                                border: '1px solid var(--border-color)',
-                                width: '100%',
-                                fontSize: '0.85rem',
-                                outline: 'none'
-                            }}
-                            value={subjectFilter}
-                            onChange={(e) => setSubjectFilter(e.target.value)}
-                        />
-                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
-                            {subjects.length} {subjects.length === 1 ? t.subject_count_singular : t.subject_count_plural}
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
-                            {subjects.map(s => {
-                                const colors = getSubjectColor(s);
-                                return (
-                                    <button
-                                        key={s}
-                                        className="btn"
-                                        onClick={() => {
-                                            onSubjectChange(s);
-                                            setTab('list');
-                                        }}
-                                        style={{
-                                            justifyContent: 'flex-start',
-                                            fontSize: '0.82rem',
-                                            padding: '0.45rem 0.6rem',
-                                            borderLeft: `4px solid ${colors.bg}`,
-                                            background: 'var(--card-bg)'
-                                        }}
-                                    >
-                                        {s}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
+                    <SubjectPickerMobile
+                        selectedCalendarId={selectedCalendarId}
+                        calendarOptions={calendarOptions}
+                        subjectFilter={subjectFilter}
+                        subjects={subjects}
+                        labels={{
+                            title: t.subjects,
+                            calendarFilterLabel: t.calendar_filter_label,
+                            allCalendars: t.calendar_filter_all,
+                            filterPlaceholder: t.filter_subjects,
+                            subjectCountSingular: t.subject_count_singular,
+                            subjectCountPlural: t.subject_count_plural
+                        }}
+                        onCalendarChange={setSelectedCalendarId}
+                        onSubjectFilterChange={setSubjectFilter}
+                        onSubjectSelect={(subject) => {
+                            onSubjectChange(subject);
+                            setTab('list');
+                        }}
+                    />
                 ) : (
                     <div className="card" style={{ padding: '0', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
                         <div style={{
@@ -495,283 +415,105 @@ export function CourseExplorer({
                                 </h2>
                             </div>
 
-                            <div className="tabs" style={{ display: 'flex', gap: '0.35rem', marginBottom: '0.45rem' }}>
-                                <button className={`btn ${tab === 'list' ? 'btn-primary' : ''}`} onClick={() => setTab('list')} style={{ fontSize: '0.74rem', padding: '0.2rem 0.4rem' }}>
-                                    📋 {t.list}
-                                </button>
-                                <button className={`btn ${tab === 'calendar' ? 'btn-primary' : ''}`} onClick={() => setTab('calendar')} style={{ fontSize: '0.74rem', padding: '0.2rem 0.4rem' }}>
-                                    📅 {t.calendar}
-                                </button>
-                                <button className={`btn ${tab === 'teachers' ? 'btn-primary' : ''}`} onClick={() => setTab('teachers')} style={{ fontSize: '0.74rem', padding: '0.2rem 0.4rem' }}>
-                                    👥 {t.by_teacher_short}
-                                </button>
-                                <button className={`btn ${tab === 'promos' ? 'btn-primary' : ''}`} onClick={() => setTab('promos')} style={{ fontSize: '0.74rem', padding: '0.2rem 0.4rem' }}>
-                                    🎓 {t.by_promo_short}
-                                </button>
-                                <button className={`btn ${tab === 'rooms' ? 'btn-primary' : ''}`} onClick={() => setTab('rooms')} style={{ fontSize: '0.74rem', padding: '0.2rem 0.4rem' }}>
-                                    🏫 {t.by_room_short}
-                                </button>
-                            </div>
-                            <div style={{
-                                display: 'flex',
-                                gap: '0.8rem',
-                                flexWrap: 'wrap',
-                                padding: '0.45rem 0.55rem',
-                                background: 'var(--card-bg)',
-                                borderRadius: 'var(--radius)',
-                                boxShadow: 'var(--shadow-xs)'
-                            }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                    <span style={{ fontSize: '1rem' }}>⏱️</span>
-                                    <div>
-                                        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.total_label}</div>
-                                        <div style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-color)' }}>{summary.total.toFixed(1)}h</div>
-                                    </div>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                    <span style={{ fontSize: '1rem' }}>📖</span>
-                                    <div>
-                                        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>CM</div>
-                                        <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#1e40af' }}>{summary.cm.toFixed(1)}h</div>
-                                    </div>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                    <span style={{ fontSize: '1rem' }}>✏️</span>
-                                    <div>
-                                        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TD</div>
-                                        <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#166534' }}>{summary.td.toFixed(1)}h</div>
-                                    </div>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                    <span style={{ fontSize: '1rem' }}>🔬</span>
-                                    <div>
-                                        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TP</div>
-                                        <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#374151' }}>{summary.tp.toFixed(1)}h</div>
-                                    </div>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                    <span style={{ fontSize: '1rem' }}>🧩</span>
-                                    <div>
-                                        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.project}</div>
-                                        <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#7c3aed' }}>{summary.project.toFixed(1)}h</div>
-                                    </div>
-                                </div>
-                                <div
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.35rem',
-                                        flexWrap: 'wrap',
-                                        marginLeft: 0,
-                                        width: '100%',
-                                        flexBasis: '100%'
+                            <div style={{ marginBottom: '0.45rem' }}>
+                                <CourseTabs
+                                    tab={tab}
+                                    compact={true}
+                                    labels={{
+                                        list: t.list,
+                                        calendar: t.calendar,
+                                        byTeacher: t.by_teacher_short,
+                                        byPromo: t.by_promo_short,
+                                        byRoom: t.by_room_short,
                                     }}
-                                >
-                                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>{t.service_period_label}</span>
-                                    {([
-                                        { key: 'total', label: t.service_period_total },
-                                        { key: 'done', label: t.service_period_done },
-                                        { key: 'todo', label: t.service_period_todo }
-                                    ] as const).map(opt => (
-                                        <button
-                                            key={opt.key}
-                                            type="button"
-                                            className={`btn ${breakdownScope === opt.key ? 'btn-primary' : ''}`}
-                                            onClick={() => setBreakdownScope(opt.key)}
-                                            style={{ fontSize: '0.7rem', padding: '0.15rem 0.4rem' }}
-                                        >
-                                            {opt.label}
-                                        </button>
-                                    ))}
-                                </div>
+                                    onTabChange={setTab}
+                                />
                             </div>
+                            <CourseSummary
+                                size="mobile"
+                                summary={summary}
+                                scope={breakdownScope}
+                                onScopeChange={setBreakdownScope}
+                                labels={{
+                                    totalLabel: t.total_label,
+                                    project: t.project,
+                                    servicePeriodLabel: t.service_period_label,
+                                    servicePeriodTotal: t.service_period_total,
+                                    servicePeriodDone: t.service_period_done,
+                                    servicePeriodTodo: t.service_period_todo
+                                }}
+                            />
                         </div>
 
                         <div style={{ padding: '0.45rem', minHeight: 0 }}>
                             {tab === 'list' && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                    {scopedCourseEvents.map((ev, i) => {
-                                        const promoText = ((ev as any).promo || '—') as string;
-                                        const borderColor = getListBorderColor(ev, subjectColors?.bg || 'var(--primary-color)');
-                                        const timeAccentColor = getTimeAccentColor((ev as any).start_date);
-                                        return (
-                                            <div key={i} className="card" style={{ padding: '0.5rem', borderLeft: `4px solid ${borderColor}` }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.4rem', marginBottom: '0.2rem' }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', minWidth: 0, flex: 1 }}>
-                                                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem', minWidth: 0, flex: 1 }}>
-                                                            <strong style={{ fontSize: '0.82rem', flexShrink: 0 }}>{ev.type_}</strong>
-                                                            <span
-                                                                title={promoText}
-                                                                style={{
-                                                                    fontSize: '0.74rem',
-                                                                    color: 'var(--text-muted)',
-                                                                    fontWeight: 400,
-                                                                    minWidth: 0,
-                                                                    overflow: 'hidden',
-                                                                    textOverflow: 'ellipsis',
-                                                                    whiteSpace: 'nowrap'
-                                                                }}
-                                                            >
-                                                                {promoText}
-                                                            </span>
-                                                        </div>
-                                                        <button
-                                                            className="btn"
-                                                            title={rawEventLabel}
-                                                            aria-label={rawEventLabel}
-                                                            onClick={() => setSelectedEvent(ev)}
-                                                            style={{
-                                                                padding: '0.1rem 0.35rem',
-                                                                fontSize: '0.7rem',
-                                                                lineHeight: 1,
-                                                                borderRadius: '999px',
-                                                                flexShrink: 0
-                                                            }}
-                                                        >
-                                                            ⓘ
-                                                        </button>
-                                                    </div>
-                                                    <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', flexShrink: 0 }}>{ev.duration_hours}h</span>
-                                                </div>
-                                                <div style={{ fontSize: '0.77rem', color: 'var(--text-secondary)' }}>
-                                                    {formatDateWithDay((ev as any).start_date)} •
-                                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', marginLeft: '0.35rem' }}>
-                                                        <span
-                                                            aria-hidden
-                                                            style={{
-                                                                width: '0.5rem',
-                                                                height: '0.5rem',
-                                                                borderRadius: '2px',
-                                                                background: timeAccentColor,
-                                                                display: 'inline-block',
-                                                                flexShrink: 0
-                                                            }}
-                                                        />
-                                                        <span>
-                                                            {formatTime((ev as any).start_date)}-{formatTime((ev as any).end_date)}
-                                                        </span>
-                                                    </span>
-                                                </div>
-                                                <div style={{ fontSize: '0.76rem', marginTop: '0.18rem' }}>{splitTeachers((ev as any).extractedTeacher).join(', ') || '—'}</div>
-                                                <div style={{ fontSize: '0.73rem', color: 'var(--text-muted)' }}>{ev.raw.location || '—'}</div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
+                                <CourseEventListMobile
+                                    events={scopedCourseEvents}
+                                    subjectColor={subjectColors?.bg || 'var(--primary-color)'}
+                                    rawEventLabel={rawEventLabel}
+                                    formatDateWithDay={formatDateWithDay}
+                                    formatTime={formatTime}
+                                    splitTeachers={splitTeachers}
+                                    getListBorderColor={getListBorderColor}
+                                    getTimeAccentColor={getTimeAccentColor}
+                                    onOpenEvent={setSelectedEvent}
+                                />
                             )}
 
                             {tab === 'calendar' && (
-                                <div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.5rem' }}>
-                                        <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                                            {t.calendar_view_label}
-                                        </label>
-                                        <select
-                                            value={mobileCalendarView}
-                                            onChange={(e) => setMobileCalendarView(e.target.value as typeof mobileCalendarView)}
-                                            style={{
-                                                padding: '0.35rem 0.5rem',
-                                                borderRadius: 'var(--radius)',
-                                                border: '1px solid var(--border-color)',
-                                                background: 'var(--card-bg)',
-                                                color: 'var(--text-color)',
-                                                fontSize: '0.75rem'
-                                            }}
-                                        >
-                                            {calendarViewOptions.map(opt => (
-                                                <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div
-                                        style={{ height: '66vh', minHeight: 380 }}
-                                        onTouchStart={(e) => {
-                                            if (!isMobile || e.touches.length !== 1) return;
-                                            const t = e.touches[0];
-                                            mobileSwipeRef.current = { x: t.clientX, y: t.clientY };
-                                        }}
-                                        onTouchEnd={(e) => {
-                                            if (!isMobile || !mobileSwipeRef.current || e.changedTouches.length !== 1) return;
-                                            const t = e.changedTouches[0];
-                                            const dx = t.clientX - mobileSwipeRef.current.x;
-                                            const dy = t.clientY - mobileSwipeRef.current.y;
-                                            mobileSwipeRef.current = null;
-                                            if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
-                                            const api = mobileCalendarRef.current?.getApi();
-                                            if (!api) return;
-                                            if (dx < 0) api.next();
-                                            else api.prev();
-                                        }}
-                                    >
-                                    <FullCalendar
-                                        ref={mobileCalendarRef}
-                                        plugins={[dayGridPlugin, timeGridPlugin, listPlugin]}
-                                        initialView={mobileCalendarView}
-                                        key={mobileCalendarView}
-                                        stickyHeaderDates={false}
-                                        headerToolbar={{
-                                            left: 'prev,next',
-                                            center: 'title',
-                                            right: ''
-                                        }}
-                                        events={calendarEvents}
-                                        locale={lang === 'fr' ? frLocale : undefined}
-                                        firstDay={1}
-                                        dayHeaderContent={(arg) => {
-                                            if (arg.view.type.includes('list')) return undefined;
-                                            const letter = dayLetters[arg.date.getDay()] || '';
-                                            const dayNum = pad2(arg.date.getDate());
-                                            return `${letter} ${dayNum}`;
-                                        }}
-                                        height="100%"
-                                    />
-                                    </div>
-                                </div>
+                                <CourseCalendarMobile
+                                    view={mobileCalendarView}
+                                    viewOptions={calendarViewOptions}
+                                    events={calendarEvents}
+                                    lang={lang}
+                                    viewLabel={t.calendar_view_label}
+                                    dayLetters={dayLetters}
+                                    onViewChange={setMobileCalendarView}
+                                    onSwipeStart={(x, y) => {
+                                        mobileSwipeRef.current = { x, y };
+                                    }}
+                                    onSwipeEnd={(x, y) => {
+                                        if (!mobileSwipeRef.current) return;
+                                        const dx = x - mobileSwipeRef.current.x;
+                                        const dy = y - mobileSwipeRef.current.y;
+                                        mobileSwipeRef.current = null;
+                                        if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+                                        const api = mobileCalendarRef.current?.getApi();
+                                        if (!api) return;
+                                        if (dx < 0) api.next();
+                                        else api.prev();
+                                    }}
+                                    calendarRef={mobileCalendarRef}
+                                />
                             )}
 
-                            {tab === 'teachers' && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                    {activeBreakdown.map(([name, s]) => (
-                                        <div key={name} className="card" style={{ padding: '0.45rem 0.55rem' }}>
-                                            <div style={{ fontWeight: 700, fontSize: '0.84rem', marginBottom: '0.25rem' }}>{name}</div>
-                                            <div style={{ fontSize: '0.76rem', color: '#475569' }}>
-                                                CM {s.cm.toFixed(1)}h • TD {s.td.toFixed(1)}h • TP {s.tp.toFixed(1)}h • {t.project} {s.project.toFixed(1)}h • {t.total} {s.total.toFixed(1)}h • {t.exam} {s.exam.toFixed(1)}h • {t.other} {s.other.toFixed(1)}h
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-
-                            {tab === 'promos' && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                    {activeBreakdown.map(([name, s]) => (
-                                        <div key={name} className="card" style={{ padding: '0.45rem 0.55rem' }}>
-                                            <div style={{ fontWeight: 700, fontSize: '0.84rem', marginBottom: '0.25rem' }}>{name}</div>
-                                            <div style={{ fontSize: '0.76rem', color: '#475569' }}>
-                                                CM {s.cm.toFixed(1)}h • TD {s.td.toFixed(1)}h • TP {s.tp.toFixed(1)}h • {t.project} {s.project.toFixed(1)}h • {t.total} {s.total.toFixed(1)}h • {t.exam} {s.exam.toFixed(1)}h • {t.other} {s.other.toFixed(1)}h
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-
-                            {tab === 'rooms' && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                    {activeBreakdown.map(([name, s]) => (
-                                        <div key={name} className="card" style={{ padding: '0.45rem 0.55rem' }}>
-                                            <div style={{ fontWeight: 700, fontSize: '0.84rem', marginBottom: '0.25rem' }}>{name}</div>
-                                            <div style={{ fontSize: '0.76rem', color: '#475569' }}>
-                                                CM {s.cm.toFixed(1)}h • TD {s.td.toFixed(1)}h • TP {s.tp.toFixed(1)}h • {t.project} {s.project.toFixed(1)}h • {t.total} {s.total.toFixed(1)}h • {t.exam} {s.exam.toFixed(1)}h • {t.other} {s.other.toFixed(1)}h
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
+                            {(tab === 'teachers' || tab === 'promos' || tab === 'rooms') && (
+                                <BreakdownCards
+                                    entries={activeBreakdown}
+                                    labels={{
+                                        project: t.project,
+                                        total: t.total,
+                                        exam: t.exam,
+                                        other: t.other
+                                    }}
+                                />
                             )}
                         </div>
                     </div>
                 )}
             </div>
-            {renderEventModal()}
+            <CourseEventModal
+                event={selectedEvent}
+                onClose={() => setSelectedEvent(null)}
+                labels={{
+                    time: t.time,
+                    location: t.location,
+                    duration: t.duration,
+                    unknown: t.unknown
+                }}
+                formatDateWithDay={formatDateWithDay}
+                formatTime={formatTime}
+            />
             </>
         );
     }
@@ -779,147 +521,23 @@ export function CourseExplorer({
     return (
         <div className="course-explorer fade-in full-height-view" style={{ display: 'flex', minHeight: 0, gap: isTablet ? '0.6rem' : '1rem', height: '100%' }}>
 
-            {/* Sidebar: Subject List - LEFT SIDE */}
-            <div className="card" style={{
-                width: isTablet ? '248px' : '320px',
-                display: 'flex',
-                flexDirection: 'column',
-                padding: isTablet ? '0.7rem' : '1rem',
-                height: '100%',
-                minHeight: 0,
-                overflow: 'hidden',
-                boxShadow: 'var(--shadow-md)'
-            }}>
-                <h3 style={{
-                    marginTop: 0,
-                    marginBottom: isTablet ? '0.65rem' : '1rem',
-                    fontSize: isTablet ? '0.92rem' : '1.1rem',
-                    fontWeight: 700,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem'
-                }}>
-                    <span>📚</span> {t.subjects}
-                </h3>
-                <label style={{ display: 'block', fontSize: isTablet ? '0.7rem' : '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.3rem' }}>
-                    {t.calendar_filter_label}
-                </label>
-                <select
-                    value={selectedCalendarId}
-                    onChange={(e) => setSelectedCalendarId(e.target.value)}
-                    style={{
-                        width: '100%',
-                        padding: isTablet ? '0.5rem' : '0.65rem',
-                        marginBottom: isTablet ? '0.6rem' : '0.85rem',
-                        borderRadius: 'var(--radius)',
-                        border: '1px solid var(--border-color)',
-                        background: 'var(--card-bg)',
-                        color: 'var(--text-color)',
-                        fontSize: isTablet ? '0.78rem' : '0.85rem'
-                    }}
-                >
-                    <option value="">{t.calendar_filter_all}</option>
-                    {calendarOptions.map(([id, name]) => (
-                        <option key={id} value={id}>{name}</option>
-                    ))}
-                </select>
-                <input
-                    type="text"
-                    placeholder={`🔍 ${t.filter_subjects}`}
-                    style={{
-                        padding: isTablet ? '0.52rem' : '0.75rem',
-                        marginBottom: isTablet ? '0.7rem' : '1rem',
-                        borderRadius: 'var(--radius)',
-                        border: '1px solid var(--border-color)',
-                        width: '100%',
-                        fontSize: isTablet ? '0.8rem' : '0.9rem',
-                        transition: 'all var(--transition-base)',
-                        outline: 'none'
-                    }}
-                    value={subjectFilter}
-                    onChange={(e) => setSubjectFilter(e.target.value)}
-                    onFocus={(e) => {
-                        e.currentTarget.style.borderColor = 'var(--border-focus)';
-                        e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-                    }}
-                    onBlur={(e) => {
-                        e.currentTarget.style.borderColor = 'var(--border-color)';
-                        e.currentTarget.style.boxShadow = 'none';
-                    }}
-                />
-                <div style={{
-                    fontSize: isTablet ? '0.66rem' : '0.75rem',
-                    color: 'var(--text-muted)',
-                    marginBottom: isTablet ? '0.5rem' : '0.75rem',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    fontWeight: 600
-                }}>
-                    {subjects.length} {subjects.length === 1 ? 'matière' : 'matières'}
-                </div>
-                <div style={{
-                    flex: 1,
-                    overflowY: 'auto',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: isTablet ? '0.36rem' : '0.5rem',
-                    minHeight: 0,
-                    paddingRight: '0.25rem'
-                }}>
-                    {subjects.map(s => {
-                        const colors = getSubjectColor(s);
-                        const isSelected = selectedSubject === s;
-                        return (
-                            <div
-                                key={s}
-                                onClick={() => onSubjectChange(s)}
-                                style={{
-                                    padding: isTablet ? '0.55rem' : '0.75rem',
-                                    cursor: 'pointer',
-                                    borderRadius: 'var(--radius)',
-                                    background: isSelected ? colors.bg : 'transparent',
-                                    color: isSelected ? colors.text : 'var(--text-color)',
-                                    fontWeight: isSelected ? 600 : 500,
-                                    fontSize: isTablet ? '0.78rem' : '0.9rem',
-                                    transition: 'all var(--transition-base)',
-                                    border: `2px solid ${isSelected ? colors.bg : 'transparent'}`,
-                                    boxShadow: isSelected ? 'var(--shadow-sm)' : 'none',
-                                    transform: isSelected ? 'translateX(4px)' : 'none',
-                                    position: 'relative',
-                                    paddingLeft: '1rem'
-                                }}
-                                onMouseEnter={(e) => {
-                                    if (!isSelected) {
-                                        e.currentTarget.style.background = getSubjectColorLight(s);
-                                        e.currentTarget.style.borderColor = colors.bg;
-                                        e.currentTarget.style.transform = 'translateX(2px)';
-                                    }
-                                }}
-                                onMouseLeave={(e) => {
-                                    if (!isSelected) {
-                                        e.currentTarget.style.background = 'transparent';
-                                        e.currentTarget.style.borderColor = 'transparent';
-                                        e.currentTarget.style.transform = 'none';
-                                    }
-                                }}
-                            >
-                                <div style={{
-                                    position: 'absolute',
-                                    left: '0.25rem',
-                                    top: '50%',
-                                    transform: 'translateY(-50%)',
-                                    width: '4px',
-                                    height: isSelected ? '60%' : '0%',
-                                    background: isSelected ? colors.text : colors.bg,
-                                    borderRadius: 'var(--radius-full)',
-                                    transition: 'height var(--transition-base)'
-                                }}></div>
-                                {s}
-                            </div>
-                        );
-                    })}
-                </div>
-            </div>
+            <SubjectSidebarDesktop
+                isTablet={isTablet}
+                selectedCalendarId={selectedCalendarId}
+                calendarOptions={calendarOptions}
+                subjectFilter={subjectFilter}
+                subjects={subjects}
+                selectedSubject={selectedSubject}
+                labels={{
+                    title: t.subjects,
+                    calendarFilterLabel: t.calendar_filter_label,
+                    allCalendars: t.calendar_filter_all,
+                    filterPlaceholder: t.filter_subjects,
+                }}
+                onCalendarChange={setSelectedCalendarId}
+                onSubjectFilterChange={setSubjectFilter}
+                onSubjectSelect={onSubjectChange}
+            />
 
             {/* Main Content - RIGHT SIDE */}
             <div className="card" style={{ flex: 1, padding: '0', display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
@@ -963,272 +581,81 @@ export function CourseExplorer({
                                     }}></span>
                                     {selectedSubject}
                                 </h2>
-                                <div className="tabs" style={{ display: 'flex', gap: '0.5rem' }}>
-                                    <button className={`btn ${tab === 'list' ? 'btn-primary' : ''}`} onClick={() => setTab('list')} style={{ fontSize: isTablet ? '0.68rem' : '0.75rem', padding: isTablet ? '0.17rem 0.34rem' : '0.2rem 0.45rem' }}>
-                                        📋 {t.list}
-                                    </button>
-                                    <button className={`btn ${tab === 'calendar' ? 'btn-primary' : ''}`} onClick={() => setTab('calendar')} style={{ fontSize: isTablet ? '0.68rem' : '0.75rem', padding: isTablet ? '0.17rem 0.34rem' : '0.2rem 0.45rem' }}>
-                                        📅 {t.calendar}
-                                    </button>
-                                    <button className={`btn ${tab === 'teachers' ? 'btn-primary' : ''}`} onClick={() => setTab('teachers')} style={{ fontSize: isTablet ? '0.68rem' : '0.75rem', padding: isTablet ? '0.17rem 0.34rem' : '0.2rem 0.45rem' }}>
-                                        👥 {t.by_teacher}
-                                    </button>
-                                    <button className={`btn ${tab === 'promos' ? 'btn-primary' : ''}`} onClick={() => setTab('promos')} style={{ fontSize: isTablet ? '0.68rem' : '0.75rem', padding: isTablet ? '0.17rem 0.34rem' : '0.2rem 0.45rem' }}>
-                                        🎓 {t.by_promo}
-                                    </button>
-                                    <button className={`btn ${tab === 'rooms' ? 'btn-primary' : ''}`} onClick={() => setTab('rooms')} style={{ fontSize: isTablet ? '0.68rem' : '0.75rem', padding: isTablet ? '0.17rem 0.34rem' : '0.2rem 0.45rem' }}>
-                                        🏫 {t.by_room}
-                                    </button>
-                                </div>
-                            </div>
-                            <div style={{
-                                display: 'flex',
-                                gap: '0.9rem',
-                                flexWrap: 'wrap',
-                                padding: '0.45rem 0.6rem',
-                                background: 'var(--card-bg)',
-                                borderRadius: 'var(--radius)',
-                                boxShadow: 'var(--shadow-xs)'
-                            }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                    <span style={{ fontSize: '1rem' }}>⏱️</span>
-                                    <div>
-                                        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.total_label}</div>
-                                        <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-color)' }}>{summary.total.toFixed(1)}h</div>
-                                    </div>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                    <span style={{ fontSize: '1rem' }}>📖</span>
-                                    <div>
-                                        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>CM</div>
-                                        <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1e40af' }}>{summary.cm.toFixed(1)}h</div>
-                                    </div>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                    <span style={{ fontSize: '1rem' }}>✏️</span>
-                                    <div>
-                                        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TD</div>
-                                        <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#166534' }}>{summary.td.toFixed(1)}h</div>
-                                    </div>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                    <span style={{ fontSize: '1rem' }}>🔬</span>
-                                    <div>
-                                        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TP</div>
-                                        <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#374151' }}>{summary.tp.toFixed(1)}h</div>
-                                    </div>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                    <span style={{ fontSize: '1rem' }}>🧩</span>
-                                    <div>
-                                        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.project}</div>
-                                        <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#7c3aed' }}>{summary.project.toFixed(1)}h</div>
-                                    </div>
-                                </div>
-                                <div
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.45rem',
-                                        flexWrap: 'wrap',
-                                        marginLeft: 'auto'
+                                <CourseTabs
+                                    tab={tab}
+                                    compact={isTablet}
+                                    labels={{
+                                        list: t.list,
+                                        calendar: t.calendar,
+                                        byTeacher: t.by_teacher,
+                                        byPromo: t.by_promo,
+                                        byRoom: t.by_room,
                                     }}
-                                >
-                                    <span style={{ fontSize: isTablet ? '0.66rem' : '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>{t.service_period_label}</span>
-                                    {([
-                                        { key: 'total', label: t.service_period_total },
-                                        { key: 'done', label: t.service_period_done },
-                                        { key: 'todo', label: t.service_period_todo }
-                                    ] as const).map(opt => (
-                                        <button
-                                            key={opt.key}
-                                            type="button"
-                                            className={`btn ${breakdownScope === opt.key ? 'btn-primary' : ''}`}
-                                            onClick={() => setBreakdownScope(opt.key)}
-                                            style={{ fontSize: isTablet ? '0.66rem' : '0.72rem', padding: isTablet ? '0.16rem 0.34rem' : '0.2rem 0.42rem' }}
-                                        >
-                                            {opt.label}
-                                        </button>
-                                    ))}
-                                </div>
+                                    onTabChange={setTab}
+                                />
                             </div>
+                            <CourseSummary
+                                size={isTablet ? 'tablet' : 'desktop'}
+                                summary={summary}
+                                scope={breakdownScope}
+                                onScopeChange={setBreakdownScope}
+                                labels={{
+                                    totalLabel: t.total_label,
+                                    project: t.project,
+                                    servicePeriodLabel: t.service_period_label,
+                                    servicePeriodTotal: t.service_period_total,
+                                    servicePeriodDone: t.service_period_done,
+                                    servicePeriodTodo: t.service_period_todo
+                                }}
+                            />
                         </div>
 
                         {/* Content Body */}
                         <div style={{ flex: 1, overflowY: tab === 'calendar' ? 'hidden' : 'auto', padding: '0.5rem', minHeight: 0 }}>
 
                             {tab === 'list' && (
-                            <div style={{ overflowX: 'auto' }}>
-                                <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
-                                    <thead style={{ position: 'sticky', top: 0, background: 'var(--card-bg)', zIndex: 10 }}>
-                                            <tr style={{ textAlign: 'left' }}>
-                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.type}</th>
-                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.date}</th>
-                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.time}</th>
-                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.teacher}</th>
-                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.promo}</th>
-                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.location}</th>
-                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.duration}</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {scopedCourseEvents.map((ev, i) => {
-                                                const borderColor = getListBorderColor(ev, subjectColors?.bg || 'var(--primary-color)');
-                                                const timeAccentColor = getTimeAccentColor((ev as any).start_date);
-                                                return (
-                                                <tr key={i} style={{
-                                                    borderBottom: '1px solid var(--border-color)',
-                                                    transition: 'background var(--transition-fast)'
-                                                }}
-                                                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-color)'}
-                                                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                                                >
-                                                    <td style={{ padding: '0.75rem', borderLeft: `4px solid ${borderColor}` }}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                                            <span style={{
-                                                                padding: '4px 12px',
-                                                                borderRadius: 'var(--radius-full)',
-                                                                fontSize: '0.8rem',
-                                                                fontWeight: 600,
-                                                                background: ev.type_.toUpperCase().includes('CM') ? '#dbeafe' :
-                                                                    ev.type_.toUpperCase().includes('TD') ? '#dcfce7' :
-                                                                        ev.type_.toUpperCase().includes('TP') ? '#fef3c7' : '#f3f4f6',
-                                                                color: ev.type_.toUpperCase().includes('CM') ? '#1e40af' :
-                                                                    ev.type_.toUpperCase().includes('TD') ? '#166534' :
-                                                                        ev.type_.toUpperCase().includes('TP') ? '#92400e' : '#374151',
-                                                                display: 'inline-block'
-                                                            }}>
-                                                                {ev.type_}
-                                                            </span>
-                                                            <button
-                                                                className="btn"
-                                                                title={rawEventLabel}
-                                                                aria-label={rawEventLabel}
-                                                                onClick={() => setSelectedEvent(ev)}
-                                                                style={{
-                                                                    padding: '0.12rem 0.35rem',
-                                                                    fontSize: '0.7rem',
-                                                                    lineHeight: 1,
-                                                                    borderRadius: '999px'
-                                                                }}
-                                                            >
-                                                                ⓘ
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                    <td style={{ padding: '0.75rem', fontSize: '0.9rem' }}>{formatDateWithDay((ev as any).start_date)}</td>
-                                                    <td style={{ padding: '0.75rem', fontSize: '0.9rem', fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
-                                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
-                                                            <span
-                                                                aria-hidden
-                                                                style={{
-                                                                    width: '0.55rem',
-                                                                    height: '0.55rem',
-                                                                    borderRadius: '2px',
-                                                                    background: timeAccentColor,
-                                                                    display: 'inline-block',
-                                                                    flexShrink: 0
-                                                                }}
-                                                            />
-                                                            <span>
-                                                                {formatTime((ev as any).start_date)} - {formatTime((ev as any).end_date)}
-                                                            </span>
-                                                        </span>
-                                                    </td>
-                                                    <td style={{ padding: '0.75rem', fontSize: '0.9rem', color: 'var(--text-color)', fontWeight: 600 }}>
-                                                        {splitTeachers((ev as any).extractedTeacher).join(', ') || '—'}
-                                                    </td>
-                                                    <td style={{ padding: '0.75rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                                                        {(() => {
-                                                            const promoText = (ev as any).promo || '—';
-                                                            return (
-                                                                <div
-                                                                    title={promoText}
-                                                                    style={{
-                                                                        display: 'inline-block',
-                                                                        width: '220px',
-                                                                        minWidth: '120px',
-                                                                        maxWidth: '480px',
-                                                                        whiteSpace: 'nowrap',
-                                                                        overflow: 'hidden',
-                                                                        textOverflow: 'ellipsis',
-                                                                        resize: 'horizontal',
-                                                                        paddingRight: '0.25rem',
-                                                                        verticalAlign: 'middle'
-                                                                    }}
-                                                                >
-                                                                    {promoText}
-                                                                </div>
-                                                            );
-                                                        })()}
-                                                    </td>
-                                                    <td style={{ padding: '0.75rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                                                        {ev.raw.location || '—'}
-                                                    </td>
-                                                    <td style={{ padding: '0.75rem', fontWeight: 600, fontFamily: 'var(--font-mono)' }}>{ev.duration_hours}h</td>
-                                                </tr>
-                                            )})}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                <CourseEventTableDesktop
+                                    events={scopedCourseEvents}
+                                    subjectColor={subjectColors?.bg || 'var(--primary-color)'}
+                                    rawEventLabel={rawEventLabel}
+                                    labels={{
+                                        type: t.type,
+                                        date: t.date,
+                                        time: t.time,
+                                        teacher: t.teacher,
+                                        promo: t.promo,
+                                        location: t.location,
+                                        duration: t.duration
+                                    }}
+                                    formatDateWithDay={formatDateWithDay}
+                                    formatTime={formatTime}
+                                    splitTeachers={splitTeachers}
+                                    getListBorderColor={getListBorderColor}
+                                    getTimeAccentColor={getTimeAccentColor}
+                                    onOpenEvent={setSelectedEvent}
+                                />
                             )}
 
                             {tab === 'calendar' && (
-                                <div style={{ height: '100%', minHeight: 0 }}>
-                                    <FullCalendar
-                                        plugins={[dayGridPlugin, timeGridPlugin, listPlugin]}
-                                        initialView="listWeek"
-                                        stickyHeaderDates={false}
-                                        headerToolbar={{
-                                            left: 'prev,next today',
-                                            center: 'title',
-                                            right: 'dayGridMonth,timeGridWeek,listWeek'
-                                        }}
-                                        events={calendarEvents}
-                                        locale={lang === 'fr' ? frLocale : undefined}
-                                        firstDay={1}
-                                        dayHeaderContent={(arg) => {
-                                            if (arg.view.type.includes('list')) return undefined;
-                                            const letter = dayLetters[arg.date.getDay()] || '';
-                                            const dayNum = pad2(arg.date.getDate());
-                                            return `${letter} ${dayNum}`;
-                                        }}
-                                        height="100%"
-                                        expandRows={true}
-                                    />
-                                </div>
+                                <CourseCalendarDesktop
+                                    events={calendarEvents}
+                                    lang={lang}
+                                    dayLetters={dayLetters}
+                                />
                             )}
 
                             {tab === 'teachers' && (
                                 <div>
-                                    <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
-                                        <thead>
-                                            <tr style={{ textAlign: 'left' }}>
-                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.source_teacher}</th>
-                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>CM</th>
-                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TD</th>
-                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TP</th>
-                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.project}</th>
-                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.total}</th>
-                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.exam}</th>
-                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.other}</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {activeBreakdown.map(([name, s]) => (
-                                                <tr key={name} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                                                    <td style={{ padding: '0.8rem', fontWeight: 600, fontSize: '0.95rem' }}>{name}</td>
-                                                    <td style={{ padding: '0.8rem', color: '#1e40af', fontFamily: 'var(--font-mono)' }}>{s.cm.toFixed(1)}h</td>
-                                                    <td style={{ padding: '0.8rem', color: '#166534', fontFamily: 'var(--font-mono)' }}>{s.td.toFixed(1)}h</td>
-                                                    <td style={{ padding: '0.8rem', color: '#92400e', fontFamily: 'var(--font-mono)' }}>{s.tp.toFixed(1)}h</td>
-                                                    <td style={{ padding: '0.8rem', color: '#7c3aed', fontFamily: 'var(--font-mono)' }}>{s.project.toFixed(1)}h</td>
-                                                    <td style={{ padding: '0.8rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>{s.total.toFixed(1)}h</td>
-                                                    <td style={{ padding: '0.8rem', color: '#b91c1c', fontFamily: 'var(--font-mono)' }}>{s.exam.toFixed(1)}h</td>
-                                                    <td style={{ padding: '0.8rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{s.other.toFixed(1)}h</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                                    <BreakdownTable
+                                        firstColumnLabel={t.source_teacher}
+                                        entries={activeBreakdown}
+                                        labels={{
+                                            project: t.project,
+                                            total: t.total,
+                                            exam: t.exam,
+                                            other: t.other
+                                        }}
+                                    />
                                     <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '2rem', padding: '1rem', background: 'var(--bg-color)', borderRadius: 'var(--radius)', borderLeft: '3px solid var(--info)' }}>
                                         ℹ️ {t.teacher_breakdown_note}
                                     </p>
@@ -1237,67 +664,31 @@ export function CourseExplorer({
 
                             {tab === 'promos' && (
                                 <div>
-                                    <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
-                                        <thead>
-                                            <tr style={{ textAlign: 'left' }}>
-                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.promo}</th>
-                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>CM</th>
-                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TD</th>
-                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TP</th>
-                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.project}</th>
-                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.total}</th>
-                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.exam}</th>
-                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.other}</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {activeBreakdown.map(([name, s]) => (
-                                                <tr key={name} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                                                    <td style={{ padding: '0.8rem', fontWeight: 600, fontSize: '0.95rem' }}>{name}</td>
-                                                    <td style={{ padding: '0.8rem', color: '#1e40af', fontFamily: 'var(--font-mono)' }}>{s.cm.toFixed(1)}h</td>
-                                                    <td style={{ padding: '0.8rem', color: '#166534', fontFamily: 'var(--font-mono)' }}>{s.td.toFixed(1)}h</td>
-                                                    <td style={{ padding: '0.8rem', color: '#92400e', fontFamily: 'var(--font-mono)' }}>{s.tp.toFixed(1)}h</td>
-                                                    <td style={{ padding: '0.8rem', color: '#7c3aed', fontFamily: 'var(--font-mono)' }}>{s.project.toFixed(1)}h</td>
-                                                    <td style={{ padding: '0.8rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>{s.total.toFixed(1)}h</td>
-                                                    <td style={{ padding: '0.8rem', color: '#b91c1c', fontFamily: 'var(--font-mono)' }}>{s.exam.toFixed(1)}h</td>
-                                                    <td style={{ padding: '0.8rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{s.other.toFixed(1)}h</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                                    <BreakdownTable
+                                        firstColumnLabel={t.promo}
+                                        entries={activeBreakdown}
+                                        labels={{
+                                            project: t.project,
+                                            total: t.total,
+                                            exam: t.exam,
+                                            other: t.other
+                                        }}
+                                    />
                                 </div>
                             )}
 
                             {tab === 'rooms' && (
                                 <div>
-                                    <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
-                                        <thead>
-                                            <tr style={{ textAlign: 'left' }}>
-                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.location}</th>
-                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>CM</th>
-                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TD</th>
-                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TP</th>
-                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.project}</th>
-                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.total}</th>
-                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.exam}</th>
-                                                <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.other}</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {activeBreakdown.map(([name, s]) => (
-                                                <tr key={name} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                                                    <td style={{ padding: '0.8rem', fontWeight: 600, fontSize: '0.95rem' }}>{name}</td>
-                                                    <td style={{ padding: '0.8rem', color: '#1e40af', fontFamily: 'var(--font-mono)' }}>{s.cm.toFixed(1)}h</td>
-                                                    <td style={{ padding: '0.8rem', color: '#166534', fontFamily: 'var(--font-mono)' }}>{s.td.toFixed(1)}h</td>
-                                                    <td style={{ padding: '0.8rem', color: '#92400e', fontFamily: 'var(--font-mono)' }}>{s.tp.toFixed(1)}h</td>
-                                                    <td style={{ padding: '0.8rem', color: '#7c3aed', fontFamily: 'var(--font-mono)' }}>{s.project.toFixed(1)}h</td>
-                                                    <td style={{ padding: '0.8rem', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>{s.total.toFixed(1)}h</td>
-                                                    <td style={{ padding: '0.8rem', color: '#b91c1c', fontFamily: 'var(--font-mono)' }}>{s.exam.toFixed(1)}h</td>
-                                                    <td style={{ padding: '0.8rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{s.other.toFixed(1)}h</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                                    <BreakdownTable
+                                        firstColumnLabel={t.location}
+                                        entries={activeBreakdown}
+                                        labels={{
+                                            project: t.project,
+                                            total: t.total,
+                                            exam: t.exam,
+                                            other: t.other
+                                        }}
+                                    />
                                 </div>
                             )}
 
@@ -1305,7 +696,18 @@ export function CourseExplorer({
                     </>
                 )}
             </div>
-            {renderEventModal()}
+            <CourseEventModal
+                event={selectedEvent}
+                onClose={() => setSelectedEvent(null)}
+                labels={{
+                    time: t.time,
+                    location: t.location,
+                    duration: t.duration,
+                    unknown: t.unknown
+                }}
+                formatDateWithDay={formatDateWithDay}
+                formatTime={formatTime}
+            />
         </div>
     );
 }

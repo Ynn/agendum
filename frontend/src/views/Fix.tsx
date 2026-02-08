@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { NormalizedEvent } from '../types';
+import type { EnrichedEvent } from '../types';
 import { useT } from '../i18n';
 
 type Category = 'teachers' | 'promos' | 'subjects';
 
 interface Props {
-  events: NormalizedEvent[];
+  events: EnrichedEvent[];
   rules: {
     teachers: Record<string, string>;
     promos: Record<string, string>;
@@ -52,14 +52,14 @@ export function Fix({ events, rules, onUpdateRules, onRemoveRule, onToggleHide, 
     const subjectMap = new Map<string, Entry>();
 
     events.forEach(ev => {
-      const teacherStr = (ev as any).extractedTeacher || '';
+      const teacherStr = ev.extractedTeacher || '';
       teacherStr
         .split(',')
         .map((t: string) => t.trim())
         .filter((t: string) => Boolean(t))
         .forEach((t: string) => add(teacherMap, t, ev.subject || '')); // show subject as context
 
-      const promoStr = (ev as any).promo || '';
+      const promoStr = ev.promo || '';
       if (promoStr) add(promoMap, promoStr, ev.subject || '');
 
       if (ev.subject) add(subjectMap, ev.subject, promoStr || teacherStr || '');

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Calendar } from '../types';
-import { useT } from '../i18n';
+import { useLang, useT } from '../i18n';
 import { msUntilManualRefreshAllowed } from '../utils/remoteCalendars';
 
 interface Props {
@@ -16,6 +16,7 @@ interface Props {
 
 export function CalendarManager({ calendars, isMobile = false, onToggle, onToggleStats, onRemove, onRefresh, onRename, onShowQr }: Props) {
     const t = useT();
+    const lang = useLang();
     const [editingId, setEditingId] = useState<string | null>(null);
     const [draftName, setDraftName] = useState('');
 
@@ -88,6 +89,16 @@ export function CalendarManager({ calendars, isMobile = false, onToggle, onToggl
                                 <div style={{ fontSize: isMobile ? '0.64rem' : '0.72rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
                                     {t.last_sync_prefix} {cal.remote.lastSyncedAt ? new Date(cal.remote.lastSyncedAt).toLocaleString() : t.last_sync_never}
                                     {cal.remote.lastError ? ` • ${t.sync_error}` : ''}
+                                </div>
+                            )}
+                            {cal.remote?.lastError && (
+                                <div style={{ fontSize: isMobile ? '0.63rem' : '0.7rem', color: '#b91c1c', marginTop: '0.2rem' }}>
+                                    {t.sync_error}: {cal.remote.lastError}
+                                </div>
+                            )}
+                            {cal.remote?.lastWarning && (
+                                <div style={{ fontSize: isMobile ? '0.63rem' : '0.7rem', color: '#92400e', marginTop: '0.2rem' }}>
+                                    {lang === 'fr' ? 'Avertissement' : 'Warning'}: {cal.remote.lastWarning}
                                 </div>
                             )}
                             {/* Stats Toggle */}
