@@ -19,6 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       VITE_RENNES_PROXY_BASE_URL: ${{ vars.VITE_RENNES_PROXY_BASE_URL }}
+      VITE_RENNES_PROXY_BASE_URL_NIGHTLY: ${{ vars.VITE_RENNES_PROXY_BASE_URL_NIGHTLY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -68,6 +69,9 @@ jobs:
           (
             cd "$stable_dir/frontend"
             npm ci
+            if [ -z "${VITE_RENNES_PROXY_BASE_URL:-}" ]; then
+              echo "::warning::VITE_RENNES_PROXY_BASE_URL is empty; Rennes proxy URLs will fail in this build."
+            fi
             npm run build
           )
 
@@ -101,7 +105,11 @@ jobs:
           (
             cd "$nightly_dir/frontend"
             npm ci
-            VITE_STORAGE_NAMESPACE=nightly npm run build
+            proxy_url="${VITE_RENNES_PROXY_BASE_URL_NIGHTLY:-${VITE_RENNES_PROXY_BASE_URL:-}}"
+            if [ -z "${proxy_url:-}" ]; then
+              echo "::warning::No Rennes proxy URL set for nightly (VITE_RENNES_PROXY_BASE_URL_NIGHTLY / VITE_RENNES_PROXY_BASE_URL). Rennes URLs will fail."
+            fi
+            VITE_STORAGE_NAMESPACE=nightly VITE_RENNES_PROXY_BASE_URL="$proxy_url" npm run build
           )
 
           rsync -a --delete "$nightly_dir/frontend/dist/" "$site_dir/nightly/"
