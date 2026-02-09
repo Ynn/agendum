@@ -161,6 +161,13 @@ export function CourseCalendarMobile({
     };
   }, [currentTitle, compactTitle, view]);
 
+  useEffect(() => {
+    const api = calendarRef.current?.getApi();
+    if (!api) return;
+    if (api.view.type === view) return;
+    api.changeView(view);
+  }, [view, calendarRef]);
+
   const goPrev = () => calendarRef.current?.getApi().prev();
   const goToday = () => calendarRef.current?.getApi().today();
   const goNext = () => calendarRef.current?.getApi().next();
@@ -190,7 +197,13 @@ export function CourseCalendarMobile({
               <button
                 key={opt.value}
                 className={`btn agenda-mobile-view-btn ${view === opt.value ? 'active' : ''}`}
-                onClick={() => onViewChange(opt.value)}
+                onClick={() => {
+                  onViewChange(opt.value);
+                  const api = calendarRef.current?.getApi();
+                  if (api && api.view.type !== opt.value) {
+                    api.changeView(opt.value);
+                  }
+                }}
               >
                 {opt.label}
               </button>
@@ -272,6 +285,16 @@ export function CourseCalendarMobile({
           expandRows={true}
         />
       </div>
+      {isFullscreen && (
+        <button
+          className="btn course-calendar-mobile__exit-btn"
+          onClick={() => setIsFullscreen(false)}
+          aria-label={lang === 'fr' ? 'Quitter le plein écran' : 'Exit fullscreen'}
+          title={lang === 'fr' ? 'Quitter le plein écran' : 'Exit fullscreen'}
+        >
+          ✕
+        </button>
+      )}
     </div>
   );
 }
