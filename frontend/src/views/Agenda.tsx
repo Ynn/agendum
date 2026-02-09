@@ -58,8 +58,9 @@ const weekToDate = (value: string) => {
     return isoWeekStart;
 };
 const SLOT_STEP_MINUTES = 30;
-const DEFAULT_SLOT_MIN_MINUTES = 7 * 60 + 30; // 07:30
-const DEFAULT_SLOT_MAX_MINUTES = 19 * 60 + 30; // 19:30
+const SLOT_BOUND_STEP_MINUTES = 60;
+const DEFAULT_SLOT_MIN_MINUTES = 7 * 60; // 07:00
+const DEFAULT_SLOT_MAX_MINUTES = 20 * 60; // 20:00
 const floorToStep = (value: number, step: number) => Math.floor(value / step) * step;
 const ceilToStep = (value: number, step: number) => Math.ceil(value / step) * step;
 const toSlotTime = (minutes: number) => {
@@ -341,16 +342,16 @@ export function Agenda({
         let maxMinutes = DEFAULT_SLOT_MAX_MINUTES;
 
         if (earliestStartMinutes !== null && earliestStartMinutes < minMinutes) {
-            minMinutes = floorToStep(earliestStartMinutes, SLOT_STEP_MINUTES);
+            minMinutes = floorToStep(earliestStartMinutes, SLOT_BOUND_STEP_MINUTES);
         }
         if (latestEndMinutes !== null && latestEndMinutes > maxMinutes) {
-            maxMinutes = ceilToStep(latestEndMinutes, SLOT_STEP_MINUTES);
+            maxMinutes = ceilToStep(latestEndMinutes, SLOT_BOUND_STEP_MINUTES);
         }
 
-        minMinutes = Math.max(0, Math.min(minMinutes, 23 * 60 + 30));
+        minMinutes = Math.max(0, Math.min(minMinutes, 23 * 60));
         maxMinutes = Math.max(SLOT_STEP_MINUTES, Math.min(maxMinutes, 24 * 60));
-        if (maxMinutes <= minMinutes + SLOT_STEP_MINUTES) {
-            maxMinutes = Math.min(24 * 60, minMinutes + 2 * SLOT_STEP_MINUTES);
+        if (maxMinutes <= minMinutes + SLOT_BOUND_STEP_MINUTES) {
+            maxMinutes = Math.min(24 * 60, minMinutes + 2 * SLOT_BOUND_STEP_MINUTES);
         }
 
         return {

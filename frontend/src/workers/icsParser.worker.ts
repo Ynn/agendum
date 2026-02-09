@@ -1,7 +1,7 @@
 /// <reference lib="webworker" />
 
-import init, { parse_and_normalize_detailed } from '../pkg/agendum_core';
-import type { ParseAndNormalizeDetailedResult } from '../types';
+import init, { parse_and_normalize_detailed, renormalize_raw_events } from '../pkg/agendum_core';
+import type { NormalizedEvent, ParseAndNormalizeDetailedResult } from '../types';
 import type { IcsParserWorkerRequest, IcsParserWorkerResponse } from './icsParserWorkerTypes';
 
 const workerScope = self as DedicatedWorkerGlobalScope;
@@ -25,6 +25,29 @@ async function handleMessage(message: IcsParserWorkerRequest) {
         kind: 'init',
         ok: false,
         error: error instanceof Error ? error.message : 'Failed to initialize parser worker',
+      };
+      workerScope.postMessage(response);
+    }
+    return;
+  }
+
+  if (message.kind === 'renormalize') {
+    try {
+      await ensureInit();
+      const normalized = renormalize_raw_events(message.rawEvents) as NormalizedEvent[];
+      const response: IcsParserWorkerResponse = {
+        kind: 'renormalize',
+        id: message.id,
+        ok: true,
+        result: normalized,
+      };
+      workerScope.postMessage(response);
+    } catch (error) {
+      const response: IcsParserWorkerResponse = {
+        kind: 'renormalize',
+        id: message.id,
+        ok: false,
+        error: error instanceof Error ? error.message : 'Failed to renormalize events',
       };
       workerScope.postMessage(response);
     }

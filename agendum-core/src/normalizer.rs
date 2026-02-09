@@ -1,7 +1,5 @@
 use crate::parser::RawEvent;
-use chrono::{DateTime, FixedOffset, NaiveDate, NaiveDateTime, TimeZone};
-#[cfg(not(test))]
-use chrono::{Local, Offset};
+use chrono::{DateTime, Datelike, FixedOffset, NaiveDate, NaiveDateTime, TimeZone, Timelike, Weekday};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeSet, HashSet};
@@ -164,41 +162,138 @@ fn stop_tokens() -> &'static HashSet<&'static str> {
     })
 }
 
-fn local_offset() -> FixedOffset {
-    #[cfg(test)]
-    {
-        // Deterministic offset in tests (UTC) to keep expectations stable
-        FixedOffset::east_opt(0).unwrap()
+fn parse_ical_naive_datetime(input: &str) -> Option<NaiveDateTime> {
+    for fmt in ["%Y%m%dT%H%M%S", "%Y%m%dT%H%M"] {
+        if let Ok(naive) = NaiveDateTime::parse_from_str(input, fmt) {
+            return Some(naive);
+        }
     }
 
-    #[cfg(not(test))]
-    {
-        Local::now().offset().fix()
+    if let Ok(date_only) = NaiveDate::parse_from_str(input, "%Y%m%d") {
+        return date_only.and_hms_opt(0, 0, 0);
+    }
+
+    None
+}
+
+fn paris_std_offset() -> FixedOffset {
+    FixedOffset::east_opt(3600).expect("valid fixed offset")
+}
+
+fn paris_dst_offset() -> FixedOffset {
+    FixedOffset::east_opt(7200).expect("valid fixed offset")
+}
+
+fn utc_offset() -> FixedOffset {
+    FixedOffset::east_opt(0).expect("valid fixed offset")
+}
+
+fn last_sunday(year: i32, month: u32) -> Option<NaiveDate> {
+    for day in (1..=31).rev() {
+        let date = NaiveDate::from_ymd_opt(year, month, day)?;
+        if date.weekday() == Weekday::Sun {
+            return Some(date);
+        }
+    }
+    None
+}
+
+fn paris_offset_for_utc(utc_naive: NaiveDateTime) -> FixedOffset {
+    let year = utc_naive.date().year();
+    let Some(start_day) = last_sunday(year, 3) else {
+        return paris_std_offset();
+    };
+    let Some(end_day) = last_sunday(year, 10) else {
+        return paris_std_offset();
+    };
+    let Some(dst_start_utc) = start_day.and_hms_opt(1, 0, 0) else {
+        return paris_std_offset();
+    };
+    let Some(dst_end_utc) = end_day.and_hms_opt(1, 0, 0) else {
+        return paris_std_offset();
+    };
+
+    if utc_naive >= dst_start_utc && utc_naive < dst_end_utc {
+        paris_dst_offset()
+    } else {
+        paris_std_offset()
+    }
+}
+
+fn paris_offset_for_local(naive: NaiveDateTime) -> FixedOffset {
+    let date = naive.date();
+    let month = date.month();
+    if (4..=9).contains(&month) {
+        return paris_dst_offset();
+    }
+    if month <= 2 || month >= 11 {
+        return paris_std_offset();
+    }
+
+    let year = date.year();
+    let day = date.day();
+    let hour = naive.time().hour();
+
+    if month == 3 {
+        let Some(transition_day) = last_sunday(year, 3).map(|d| d.day()) else {
+            return paris_std_offset();
+        };
+        if day > transition_day {
+            return paris_dst_offset();
+        }
+        if day < transition_day {
+            return paris_std_offset();
+        }
+        // DST starts at 02:00 local (02:xx does not exist). Favor DST from 02:00 onward.
+        if hour >= 2 {
+            paris_dst_offset()
+        } else {
+            paris_std_offset()
+        }
+    } else {
+        let Some(transition_day) = last_sunday(year, 10).map(|d| d.day()) else {
+            return paris_std_offset();
+        };
+        if day < transition_day {
+            return paris_dst_offset();
+        }
+        if day > transition_day {
+            return paris_std_offset();
+        }
+        // DST ends at 03:00 local, then clock moves back to 02:00 standard.
+        if hour < 3 {
+            paris_dst_offset()
+        } else {
+            paris_std_offset()
+        }
     }
 }
 
 fn parse_ical_datetime(s: &str) -> Option<DateTime<FixedOffset>> {
     let trimmed = s.trim();
 
-    // Try explicit Z (UTC) by parsing as naive then assuming UTC
+    // Explicit UTC input (suffix Z)
     if let Some(stripped) = trimmed.strip_suffix('Z') {
-        if let Ok(naive) = NaiveDateTime::parse_from_str(stripped, "%Y%m%dT%H%M%S") {
-            let utc = FixedOffset::east_opt(0)?
-                .from_local_datetime(&naive)
-                .single()?;
-            return Some(utc.with_timezone(&local_offset()));
+        if let Some(naive_utc) = parse_ical_naive_datetime(stripped) {
+            let offset = paris_offset_for_utc(naive_utc);
+            let utc_dt = utc_offset().from_utc_datetime(&naive_utc);
+            return Some(utc_dt.with_timezone(&offset));
         }
     }
 
-    // Try explicit offset
-    if let Ok(dt) = DateTime::parse_from_str(trimmed, "%Y%m%dT%H%M%S%z") {
-        return Some(dt.with_timezone(&local_offset()));
+    // Explicit numeric offset input
+    for fmt in ["%Y%m%dT%H%M%S%z", "%Y%m%dT%H%M%z"] {
+        if let Ok(dt) = DateTime::parse_from_str(trimmed, fmt) {
+            let utc_naive = dt.with_timezone(&utc_offset()).naive_utc();
+            let offset = paris_offset_for_utc(utc_naive);
+            return Some(dt.with_timezone(&offset));
+        }
     }
 
-    // Fallback: naive local datetime
-    if let Ok(naive) = NaiveDateTime::parse_from_str(trimmed, "%Y%m%dT%H%M%S") {
-        // Convert naive to local offset; if ambiguous, pick the first
-        return local_offset().from_local_datetime(&naive).single();
+    // Floating datetime interpreted in Europe/Paris local time
+    if let Some(naive_local) = parse_ical_naive_datetime(trimmed) {
+        let offset = paris_offset_for_local(naive_local);
+        return offset.from_local_datetime(&naive_local).single();
     }
 
     None
@@ -703,9 +798,9 @@ mod tests {
         assert_eq!(normalized[1].type_, "TP");
         assert_eq!(normalized[1].subject, "IPD");
         assert_eq!(normalized[1].duration_hours, 1.5);
-        // With test offset fixed to UTC, the local times match UTC inputs
-        assert_eq!(normalized[1].start_iso, "2025-01-01T10:00:00");
-        assert_eq!(normalized[1].end_iso, "2025-01-01T11:30:00");
+        // UTC input converted to Europe/Paris (winter = UTC+1)
+        assert_eq!(normalized[1].start_iso, "2025-01-01T11:00:00");
+        assert_eq!(normalized[1].end_iso, "2025-01-01T12:30:00");
 
         assert_eq!(normalized[2].type_, "TD");
         assert_eq!(normalized[2].subject, "Standard résidentiel");
@@ -856,5 +951,21 @@ mod tests {
         assert_eq!(normalized[0].teachers, vec!["—"]);
         assert!(normalized[0].promos.is_empty());
         assert!(normalized[0].cleaned_description.is_empty());
+    }
+
+    #[test]
+    fn test_utc_conversion_handles_france_dst() {
+        let winter = make_event("IPD CM", "20260123T140000Z", "20260123T153000Z");
+        let summer = make_event("IPD TP", "20260331T060000Z", "20260331T073000Z");
+
+        let normalized = normalize(vec![winter, summer]);
+
+        // January in France: UTC+1
+        assert_eq!(normalized[0].start_iso, "2026-01-23T15:00:00");
+        assert_eq!(normalized[0].end_iso, "2026-01-23T16:30:00");
+
+        // End of March in France: UTC+2 (DST)
+        assert_eq!(normalized[1].start_iso, "2026-03-31T08:00:00");
+        assert_eq!(normalized[1].end_iso, "2026-03-31T09:30:00");
     }
 }

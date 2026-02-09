@@ -55,6 +55,15 @@ pub fn parse_ics_detailed(content: &str) -> Result<JsValue, JsValue> {
 }
 
 #[wasm_bindgen]
+pub fn renormalize_raw_events(raw_events: JsValue) -> Result<JsValue, JsValue> {
+    let raw: Vec<RawEvent> = serde_wasm_bindgen::from_value(raw_events)
+        .map_err(|e| JsValue::from_str(&format!("Failed to deserialize raw events: {e}")))?;
+    let normalized = normalize(raw);
+    serde_wasm_bindgen::to_value(&normalized)
+        .map_err(|e| JsValue::from_str(&format!("Failed to serialize normalized events: {e}")))
+}
+
+#[wasm_bindgen]
 pub fn greet(name: &str) -> String {
     format!("Hello, {}! Agendum Core is ready.", name)
 }

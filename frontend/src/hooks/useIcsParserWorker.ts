@@ -1,10 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import initMain, { parse_and_normalize_detailed as parseDetailedOnMainThread } from '../pkg/agendum_core';
-import type { ParseAndNormalizeDetailedResult } from '../types';
+import initMain, {
+  parse_and_normalize_detailed as parseDetailedOnMainThread,
+  renormalize_raw_events as renormalizeOnMainThread,
+} from '../pkg/agendum_core';
+import type { NormalizedEvent, ParseAndNormalizeDetailedResult, RawEvent } from '../types';
 import type { IcsParserWorkerRequest, IcsParserWorkerResponse } from '../workers/icsParserWorkerTypes';
 
-type PendingRequest = {
+type ParsePendingRequest = {
   resolve: (value: ParseAndNormalizeDetailedResult) => void;
+  reject: (error: Error) => void;
+};
+
+type RenormalizePendingRequest = {
+  resolve: (value: NormalizedEvent[]) => void;
   reject: (error: Error) => void;
 };
 
@@ -12,7 +20,8 @@ export function useIcsParserWorker() {
   const workerRef = useRef<Worker | null>(null);
   const fallbackModeRef = useRef(false);
   const fallbackInitPromiseRef = useRef<Promise<void> | null>(null);
-  const pendingRef = useRef<Map<number, PendingRequest>>(new Map());
+  const parsePendingRef = useRef<Map<number, ParsePendingRequest>>(new Map());
+  const renormalizePendingRef = useRef<Map<number, RenormalizePendingRequest>>(new Map());
   const nextIdRef = useRef(1);
   const [isReady, setIsReady] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
@@ -29,7 +38,8 @@ export function useIcsParserWorker() {
 
   useEffect(() => {
     let worker: Worker;
-    const pendingRequests = pendingRef.current;
+    const parsePending = parsePendingRef.current;
+    const renormalizePending = renormalizePendingRef.current;
     try {
       worker = new Worker(new URL('../workers/icsParser.worker.ts', import.meta.url), { type: 'module' });
     } catch (error) {
@@ -50,9 +60,21 @@ export function useIcsParserWorker() {
         return;
       }
 
-      const pending = pendingRequests.get(message.id);
+      if (message.kind === 'parse') {
+        const pending = parsePending.get(message.id);
+        if (!pending) return;
+        parsePending.delete(message.id);
+        if (message.ok) {
+          pending.resolve(message.result);
+        } else {
+          pending.reject(new Error(message.error));
+        }
+        return;
+      }
+
+      const pending = renormalizePending.get(message.id);
       if (!pending) return;
-      pendingRequests.delete(message.id);
+      renormalizePending.delete(message.id);
       if (message.ok) {
         pending.resolve(message.result);
       } else {
@@ -68,8 +90,10 @@ export function useIcsParserWorker() {
     worker.postMessage(initMessage);
 
     return () => {
-      pendingRequests.forEach(({ reject }) => reject(new Error('Parser worker terminated')));
-      pendingRequests.clear();
+      parsePending.forEach(({ reject }) => reject(new Error('Parser worker terminated')));
+      parsePending.clear();
+      renormalizePending.forEach(({ reject }) => reject(new Error('Parser worker terminated')));
+      renormalizePending.clear();
       worker.terminate();
       workerRef.current = null;
     };
@@ -91,7 +115,28 @@ export function useIcsParserWorker() {
     const id = nextIdRef.current++;
     const request: IcsParserWorkerRequest = { kind: 'parse', id, content };
     return new Promise<ParseAndNormalizeDetailedResult>((resolve, reject) => {
-      pendingRef.current.set(id, { resolve, reject });
+      parsePendingRef.current.set(id, { resolve, reject });
+      worker.postMessage(request);
+    });
+  }, []);
+
+  const renormalizeRawEvents = useCallback((rawEvents: RawEvent[]) => {
+    if (fallbackModeRef.current) {
+      try {
+        const normalized = renormalizeOnMainThread(rawEvents) as NormalizedEvent[];
+        return Promise.resolve(normalized);
+      } catch (error) {
+        return Promise.reject(error instanceof Error ? error : new Error('Failed to renormalize events'));
+      }
+    }
+    const worker = workerRef.current;
+    if (!worker) {
+      return Promise.reject(new Error('Parser worker unavailable'));
+    }
+    const id = nextIdRef.current++;
+    const request: IcsParserWorkerRequest = { kind: 'renormalize', id, rawEvents };
+    return new Promise<NormalizedEvent[]>((resolve, reject) => {
+      renormalizePendingRef.current.set(id, { resolve, reject });
       worker.postMessage(request);
     });
   }, []);
@@ -100,5 +145,6 @@ export function useIcsParserWorker() {
     isReady,
     initError,
     parseIcsDetailed,
+    renormalizeRawEvents,
   };
 }

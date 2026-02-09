@@ -1,7 +1,7 @@
 import { Suspense, lazy, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { AppHeader } from './components/AppHeader';
 import { BottomNav } from './components/BottomNav';
-import type { Calendar, NormalizedEvent } from './types';
+import type { Calendar, NormalizedEvent, RawEvent } from './types';
 import { AdvancedFilters } from './components/AdvancedFilters';
 import { LangContext, strings } from './i18n';
 import {
@@ -22,6 +22,8 @@ const KEY_LANG = namespacedStorageKey('agendum_lang');
 const KEY_THEME_MODE = namespacedStorageKey('agendum_theme_mode');
 const KEY_TEACHER = namespacedStorageKey('agendum_teacher');
 const KEY_CALENDAR_WEEK_DAYS = namespacedStorageKey('agendum_calendar_week_days');
+const KEY_NORMALIZER_VERSION = namespacedStorageKey('agendum_normalizer_version');
+const NORMALIZER_VERSION = '2026-02-09-tz-fix-v1';
 
 const Agenda = lazy(async () => {
   const module = await import('./views/Agenda');
@@ -87,8 +89,11 @@ function AppContent() {
     isReady: isParserReady,
     initError: parserInitError,
     parseIcsDetailed,
+    renormalizeRawEvents,
   } = useIcsParserWorker();
   const [calendars, setCalendars] = useState<Calendar[]>([]);
+  const [persistedLoaded, setPersistedLoaded] = useState(false);
+  const renormalizationCheckedRef = useRef(false);
   const historyReadyRef = useRef(false);
   const isPopRef = useRef(false);
   const prevCourseSubjectRef = useRef(courseSubject);
@@ -248,8 +253,71 @@ function AppContent() {
       setCalendars(persisted.calendars);
       setMainCalendarId(persisted.mainCalendarId);
       setNormalizationRules(persisted.normalizationRules);
+      setPersistedLoaded(true);
     })();
   }, [loadPersistedState]);
+
+  useEffect(() => {
+    if (!persistedLoaded || !isParserReady) return;
+    if (renormalizationCheckedRef.current) return;
+    renormalizationCheckedRef.current = true;
+
+    let savedVersion = '';
+    try {
+      savedVersion = localStorage.getItem(KEY_NORMALIZER_VERSION) || '';
+    } catch {
+      // ignore
+    }
+    if (savedVersion === NORMALIZER_VERSION) return;
+
+    void (async () => {
+      if (calendars.length === 0) {
+        try {
+          localStorage.setItem(KEY_NORMALIZER_VERSION, NORMALIZER_VERSION);
+        } catch {
+          // ignore
+        }
+        return;
+      }
+
+      let updatedAny = false;
+      const migrated: Calendar[] = [];
+
+      for (const cal of calendars) {
+        if (!Array.isArray(cal.events) || cal.events.length === 0) {
+          migrated.push(cal);
+          continue;
+        }
+
+        const rawEvents = cal.events
+          .map((ev) => ev.raw)
+          .filter((raw): raw is RawEvent => Boolean(raw?.uid));
+        if (rawEvents.length !== cal.events.length) {
+          migrated.push(cal);
+          continue;
+        }
+
+        try {
+          const normalized = await renormalizeRawEvents(rawEvents);
+          migrated.push({ ...cal, events: normalized });
+          updatedAny = true;
+        } catch {
+          migrated.push(cal);
+        }
+      }
+
+      if (updatedAny) {
+        setCalendars(migrated);
+        await savePersistedCalendars(migrated);
+      }
+
+      try {
+        localStorage.setItem(KEY_NORMALIZER_VERSION, NORMALIZER_VERSION);
+      } catch {
+        // ignore
+      }
+    })();
+  }, [calendars, isParserReady, persistedLoaded, renormalizeRawEvents, savePersistedCalendars]);
 
   useEffect(() => {
     void savePersistedRules(normalizationRules);
@@ -333,6 +401,7 @@ function AppContent() {
     try {
       localStorage.removeItem(KEY_TEACHER);
       localStorage.removeItem(KEY_CALENDAR_WEEK_DAYS);
+      localStorage.removeItem(KEY_NORMALIZER_VERSION);
     } catch {
       // ignore
     }

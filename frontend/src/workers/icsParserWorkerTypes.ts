@@ -1,11 +1,14 @@
-import type { ParseAndNormalizeDetailedResult } from '../types';
+import type { NormalizedEvent, ParseAndNormalizeDetailedResult, RawEvent } from '../types';
 
 export type IcsParserWorkerRequest =
   | { kind: 'init' }
-  | { kind: 'parse'; id: number; content: string };
+  | { kind: 'parse'; id: number; content: string }
+  | { kind: 'renormalize'; id: number; rawEvents: RawEvent[] };
 
 export type IcsParserWorkerResponse =
   | { kind: 'init'; ok: true }
   | { kind: 'init'; ok: false; error: string }
   | { kind: 'parse'; id: number; ok: true; result: ParseAndNormalizeDetailedResult }
-  | { kind: 'parse'; id: number; ok: false; error: string };
+  | { kind: 'parse'; id: number; ok: false; error: string }
+  | { kind: 'renormalize'; id: number; ok: true; result: NormalizedEvent[] }
+  | { kind: 'renormalize'; id: number; ok: false; error: string };
