@@ -58,6 +58,7 @@ export interface Calendar {
         lastSyncedAt: number | null;
         lastAttemptAt: number | null;
         lastManualRefreshAt: number | null;
+        manualRefreshHistory: number[];
         lastError: string | null;
         lastWarning: string | null;
     };

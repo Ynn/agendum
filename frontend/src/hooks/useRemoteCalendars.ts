@@ -6,6 +6,7 @@ import {
   buildFetchUrlFromSource,
   calendarNameFromUrl,
   msUntilManualRefreshAllowed,
+  pruneManualRefreshHistory,
 } from '../utils/remoteCalendars';
 import { buildParserFatalMessage, buildParserWarningMessage } from '../utils/parseDiagnostics';
 
@@ -79,7 +80,10 @@ export function useRemoteCalendars({
     if (refreshingIds[id]) return;
 
     if (isManual) {
-      const waitMs = msUntilManualRefreshAllowed(calendar.remote.lastManualRefreshAt);
+      const waitMs = msUntilManualRefreshAllowed(
+        calendar.remote.lastManualRefreshAt,
+        calendar.remote.manualRefreshHistory,
+      );
       if (waitMs > 0) return;
     }
 
@@ -92,6 +96,9 @@ export function useRemoteCalendars({
           ...c.remote,
           lastAttemptAt: attemptAt,
           lastManualRefreshAt: isManual ? attemptAt : c.remote.lastManualRefreshAt,
+          manualRefreshHistory: isManual
+            ? pruneManualRefreshHistory([...(c.remote.manualRefreshHistory ?? []), attemptAt], attemptAt)
+            : (c.remote.manualRefreshHistory ?? []),
         }
       }
       : c

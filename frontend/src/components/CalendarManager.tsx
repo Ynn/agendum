@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Calendar } from '../types';
 import { useLang, useT } from '../i18n';
 import { msUntilManualRefreshAllowed } from '../utils/remoteCalendars';
@@ -21,6 +21,12 @@ export function CalendarManager({ calendars, isMobile = false, onToggle, onToggl
     const lang = useLang();
     const [editingId, setEditingId] = useState<string | null>(null);
     const [draftName, setDraftName] = useState('');
+    const [nowMs, setNowMs] = useState(() => Date.now());
+
+    useEffect(() => {
+        const timer = window.setInterval(() => setNowMs(Date.now()), 1000);
+        return () => window.clearInterval(timer);
+    }, []);
 
     const startRename = (cal: Calendar) => {
         setEditingId(cal.id);
@@ -43,7 +49,11 @@ export function CalendarManager({ calendars, isMobile = false, onToggle, onToggl
                 {calendars.length === 0 && <p className="calendar-manager__empty">{t.no_calendars_imported}</p>}
 
                 {calendars.map(cal => {
-                    const refreshCooldownMs = msUntilManualRefreshAllowed(cal.remote?.lastManualRefreshAt ?? null);
+                    const refreshCooldownMs = msUntilManualRefreshAllowed(
+                        cal.remote?.lastManualRefreshAt ?? null,
+                        cal.remote?.manualRefreshHistory,
+                        nowMs,
+                    );
                     const refreshLabel = refreshCooldownMs > 0
                         ? t.refresh_wait.replace('{minutes}', `${Math.ceil(refreshCooldownMs / 60000)}`)
                         : t.refresh;
@@ -127,7 +137,7 @@ export function CalendarManager({ calendars, isMobile = false, onToggle, onToggl
                                     title={refreshLabel}
                                     aria-label={refreshLabel}
                                 >
-                                    {isMobile ? t.refresh : refreshLabel}
+                                    {refreshLabel}
                                 </UiButton>
                                 )}
 

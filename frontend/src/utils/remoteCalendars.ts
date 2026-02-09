@@ -7,7 +7,9 @@ const envProxyBase = (import.meta.env.VITE_RENNES_PROXY_BASE_URL as string | und
 
 export const RENNES_PROXY_BASE_URL = envProxyBase || (import.meta.env.DEV ? DEV_PROXY_BASE_PATH : '');
 export const AUTO_REFRESH_MS = 24 * 60 * 60 * 1000;
-export const MANUAL_REFRESH_COOLDOWN_MS = 60 * 60 * 1000;
+export const MANUAL_REFRESH_COOLDOWN_MS = 60 * 1000;
+export const MANUAL_REFRESH_WINDOW_MS = 60 * 60 * 1000;
+export const MANUAL_REFRESH_MAX_PER_WINDOW = 20;
 
 export function parseCalendarUrl(raw: string): URL {
     const trimmed = raw.trim();
@@ -57,8 +59,28 @@ export function calendarNameFromUrl(sourceUrl: string): string {
     return decodeURIComponent(lastSegment).replace(/\.[^.]+$/, '');
 }
 
-export function msUntilManualRefreshAllowed(lastManualRefreshAt: number | null): number {
-    if (!lastManualRefreshAt) return 0;
-    const elapsed = Date.now() - lastManualRefreshAt;
-    return Math.max(0, MANUAL_REFRESH_COOLDOWN_MS - elapsed);
+export function pruneManualRefreshHistory(history: number[] | null | undefined, now = Date.now()): number[] {
+    if (!Array.isArray(history) || history.length === 0) return [];
+    const minTs = now - MANUAL_REFRESH_WINDOW_MS;
+    return history
+        .filter((ts) => Number.isFinite(ts) && ts > minTs)
+        .sort((a, b) => a - b)
+        .slice(-MANUAL_REFRESH_MAX_PER_WINDOW);
+}
+
+export function msUntilManualRefreshAllowed(
+    lastManualRefreshAt: number | null,
+    manualRefreshHistory?: number[] | null,
+    now = Date.now(),
+): number {
+    const cooldownRemaining = lastManualRefreshAt
+        ? Math.max(0, MANUAL_REFRESH_COOLDOWN_MS - (now - lastManualRefreshAt))
+        : 0;
+
+    const recentRefreshes = pruneManualRefreshHistory(manualRefreshHistory, now);
+    const hourlyRemaining = recentRefreshes.length >= MANUAL_REFRESH_MAX_PER_WINDOW
+        ? Math.max(0, MANUAL_REFRESH_WINDOW_MS - (now - recentRefreshes[0]))
+        : 0;
+
+    return Math.max(cooldownRemaining, hourlyRemaining);
 }

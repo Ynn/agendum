@@ -277,6 +277,7 @@ function AppContent() {
           lastSyncedAt: lastSyncedAt ?? Date.now(),
           lastAttemptAt: lastSyncedAt ?? Date.now(),
           lastManualRefreshAt: null,
+          manualRefreshHistory: [],
           lastError: null,
           lastWarning: lastWarning ?? null,
         }

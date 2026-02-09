@@ -54,6 +54,12 @@ const withCalendarDefaults = (cal: Calendar): Calendar => ({
       lastSyncedAt: cal.remote.lastSyncedAt ?? null,
       lastAttemptAt: cal.remote.lastAttemptAt ?? cal.remote.lastSyncedAt ?? null,
       lastManualRefreshAt: cal.remote.lastManualRefreshAt ?? null,
+      manualRefreshHistory: Array.isArray(cal.remote.manualRefreshHistory)
+        ? cal.remote.manualRefreshHistory
+          .filter((ts) => Number.isFinite(ts))
+          .sort((a, b) => a - b)
+          .slice(-50)
+        : [],
       lastError: cal.remote.lastError ?? null,
       lastWarning: cal.remote.lastWarning ?? null,
     }
