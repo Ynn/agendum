@@ -5,7 +5,7 @@ import listPlugin from '@fullcalendar/list';
 import frLocale from '@fullcalendar/core/locales/fr';
 import type { EventInput } from '@fullcalendar/core';
 import { clsx } from 'clsx';
-import { useEffect, useRef, useState, type RefObject } from 'react';
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 
 type CalendarView = 'timeGridDay' | 'timeGridWeek' | 'dayGridMonth';
 
@@ -21,6 +21,7 @@ interface Props {
   onSwipeStart: (x: number, y: number) => void;
   onSwipeEnd: (x: number, y: number) => void;
   calendarRef: RefObject<FullCalendar | null>;
+  calendarWeekDays?: 5 | 6 | 7;
 }
 
 export function CourseCalendarMobile({
@@ -35,6 +36,7 @@ export function CourseCalendarMobile({
   onSwipeStart,
   onSwipeEnd,
   calendarRef,
+  calendarWeekDays = 7,
 }: Props) {
   const pad2 = (n: number) => n.toString().padStart(2, '0');
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -74,15 +76,15 @@ export function CourseCalendarMobile({
     return `${month}/${day}/${year}`;
   };
 
-  const buildTitle = (viewType: string, start: Date, end: Date, fallback: string) => {
+  const buildTitle = (viewType: string, start: Date, _end: Date, fallback: string) => {
     if (viewType !== 'timeGridWeek' && viewType !== 'timeGridDay') return fallback;
     const [, week = ''] = toWeekInputValue(start).split('-W');
     if (!week) return fallback;
     const prefix = `${lang === 'fr' ? 'S' : 'W'}${week}`;
 
     if (viewType === 'timeGridWeek') {
-      const endInclusive = new Date(end);
-      endInclusive.setDate(endInclusive.getDate() - 1);
+      const endInclusive = new Date(start);
+      endInclusive.setDate(endInclusive.getDate() + (calendarWeekDays - 1));
       const startLabel = formatDayMonth(start);
       const endLabel = formatDayMonth(endInclusive);
       const year = endInclusive.getFullYear();
@@ -95,15 +97,15 @@ export function CourseCalendarMobile({
     return `${prefix}: ${dayLabel}`;
   };
 
-  const buildCompactTitle = (viewType: string, start: Date, end: Date, fallback: string) => {
+  const buildCompactTitle = (viewType: string, start: Date, _end: Date, fallback: string) => {
     if (viewType !== 'timeGridWeek' && viewType !== 'timeGridDay') return fallback;
     const [, week = ''] = toWeekInputValue(start).split('-W');
     if (!week) return fallback;
     const prefix = `${lang === 'fr' ? 'S' : 'W'}${week}`;
 
     if (viewType === 'timeGridWeek') {
-      const endInclusive = new Date(end);
-      endInclusive.setDate(endInclusive.getDate() - 1);
+      const endInclusive = new Date(start);
+      endInclusive.setDate(endInclusive.getDate() + (calendarWeekDays - 1));
       const startLabel = formatShortDate(start);
       const endLabel = formatShortDate(endInclusive);
       if (lang === 'fr') return `${prefix} : ${startLabel} - ${endLabel}`;
@@ -114,6 +116,12 @@ export function CourseCalendarMobile({
     if (lang === 'fr') return `${prefix} : ${dayLabel}`;
     return `${prefix}: ${dayLabel}`;
   };
+
+  const hiddenDays = useMemo(() => {
+    if (calendarWeekDays === 5) return [0, 6];
+    if (calendarWeekDays === 6) return [0];
+    return undefined;
+  }, [calendarWeekDays]);
 
   useEffect(() => {
     if (!isFullscreen || typeof document === 'undefined') return;
@@ -233,6 +241,7 @@ export function CourseCalendarMobile({
           events={events}
           locale={lang === 'fr' ? frLocale : undefined}
           firstDay={1}
+          hiddenDays={hiddenDays}
           dayHeaderContent={(arg) => {
             if (arg.view.type.includes('list')) return undefined;
             const letter = dayLetters[arg.date.getDay()] || '';

@@ -71,10 +71,12 @@ const toSlotTime = (minutes: number) => {
 
 export function Agenda({
     events,
-    isMobile = false
+    isMobile = false,
+    calendarWeekDays = 7,
 }: {
     events: EnrichedEvent[];
     isMobile?: boolean;
+    calendarWeekDays?: 5 | 6 | 7;
 }) {
     const lang = useLang();
     const t = useT();
@@ -117,15 +119,15 @@ export function Agenda({
         return `${month}/${day}/${year}`;
     };
 
-    const buildTitle = (viewType: string, start: Date, end: Date, fallback: string) => {
+    const buildTitle = (viewType: string, start: Date, _end: Date, fallback: string) => {
         if (viewType !== 'timeGridWeek' && viewType !== 'timeGridDay') return fallback;
         const [, week = ''] = toWeekInputValue(start).split('-W');
         if (!week) return fallback;
         const prefix = `${lang === 'fr' ? 'S' : 'W'}${week}`;
 
         if (viewType === 'timeGridWeek') {
-            const endInclusive = new Date(end);
-            endInclusive.setDate(endInclusive.getDate() - 1);
+            const endInclusive = new Date(start);
+            endInclusive.setDate(endInclusive.getDate() + (calendarWeekDays - 1));
             const startLabel = formatDayMonth(start);
             const endLabel = formatDayMonth(endInclusive);
             const year = endInclusive.getFullYear();
@@ -138,15 +140,15 @@ export function Agenda({
         return `${prefix}: ${dayLabel}`;
     };
 
-    const buildCompactTitle = (viewType: string, start: Date, end: Date, fallback: string) => {
+    const buildCompactTitle = (viewType: string, start: Date, _end: Date, fallback: string) => {
         if (viewType !== 'timeGridWeek' && viewType !== 'timeGridDay') return fallback;
         const [, week = ''] = toWeekInputValue(start).split('-W');
         if (!week) return fallback;
         const prefix = `${lang === 'fr' ? 'S' : 'W'}${week}`;
 
         if (viewType === 'timeGridWeek') {
-            const endInclusive = new Date(end);
-            endInclusive.setDate(endInclusive.getDate() - 1);
+            const endInclusive = new Date(start);
+            endInclusive.setDate(endInclusive.getDate() + (calendarWeekDays - 1));
             const startLabel = formatShortDate(start);
             const endLabel = formatShortDate(endInclusive);
             if (lang === 'fr') return `${prefix} : ${startLabel} - ${endLabel}`;
@@ -157,6 +159,12 @@ export function Agenda({
         if (lang === 'fr') return `${prefix} : ${dayLabel}`;
         return `${prefix}: ${dayLabel}`;
     };
+
+    const hiddenDays = useMemo(() => {
+        if (calendarWeekDays === 5) return [0, 6];
+        if (calendarWeekDays === 6) return [0];
+        return undefined;
+    }, [calendarWeekDays]);
 
     const isListView = currentView.startsWith('list');
     const weekInputSupported = useMemo(() => {
@@ -541,6 +549,7 @@ export function Agenda({
                     }}
                     locale={lang === 'fr' ? frLocale : undefined}
                     firstDay={1}
+                    hiddenDays={hiddenDays}
                     height="100%"
                     contentHeight={undefined}
                     expandRows={true}

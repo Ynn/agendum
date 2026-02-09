@@ -22,6 +22,7 @@ interface Props {
     isTablet?: boolean;
     selectedSubject: string;
     onSubjectChange: (subject: string) => void;
+    calendarWeekDays?: 5 | 6 | 7;
 }
 
 export function CourseExplorer({
@@ -29,7 +30,8 @@ export function CourseExplorer({
     isMobile = false,
     isTablet = false,
     selectedSubject,
-    onSubjectChange
+    onSubjectChange,
+    calendarWeekDays = 7,
 }: Props) {
     const [subjectFilter, setSubjectFilter] = useState('');
     const [selectedCalendarId, setSelectedCalendarId] = useState('');
@@ -498,6 +500,7 @@ export function CourseExplorer({
                                         else api.prev();
                                     }}
                                     calendarRef={mobileCalendarRef}
+                                    calendarWeekDays={calendarWeekDays}
                                 />
                             )}
 
@@ -637,6 +640,7 @@ export function CourseExplorer({
                                     lang={lang}
                                     dayLetters={dayLetters}
                                     onEventClick={openCalendarEvent}
+                                    calendarWeekDays={calendarWeekDays}
                                 />
                             )}
 

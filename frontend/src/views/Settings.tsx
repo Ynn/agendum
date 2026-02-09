@@ -13,8 +13,10 @@ interface Props {
     selectedTeacher: string;
     isMobile?: boolean;
     themeMode: 'system' | 'light' | 'dark';
+    calendarWeekDays: 5 | 6 | 7;
     onSelectTeacher: (name: string) => void;
     onThemeModeChange: (mode: 'system' | 'light' | 'dark') => void;
+    onCalendarWeekDaysChange: (days: 5 | 6 | 7) => void;
     onPurgeAll: () => Promise<void>;
     onOpenFix: () => void;
     onImport: (name: string, events: NormalizedEvent[], isService: boolean) => void;
@@ -33,8 +35,10 @@ export function Settings({
     selectedTeacher,
     isMobile = false,
     themeMode,
+    calendarWeekDays,
     onSelectTeacher,
     onThemeModeChange,
+    onCalendarWeekDaysChange,
     onPurgeAll,
     onOpenFix,
     onImport,
@@ -136,6 +140,25 @@ export function Settings({
                         </UiSelect>
                     </div>
                     <div>
+                        <label className={`settings-section__label ${isMobile ? 'settings-section__label--mobile' : ''}`}>{t.calendar_days}</label>
+                        <UiSelect
+                            value={String(calendarWeekDays)}
+                            onChange={(e) => {
+                                const value = Number(e.target.value);
+                                if (value === 5 || value === 6 || value === 7) {
+                                    onCalendarWeekDaysChange(value);
+                                }
+                            }}
+                            uiSize={isMobile ? 'sm' : 'md'}
+                            aria-label={t.calendar_days}
+                        >
+                            <option value="5">{t.calendar_days_5}</option>
+                            <option value="6">{t.calendar_days_6}</option>
+                            <option value="7">{t.calendar_days_7}</option>
+                        </UiSelect>
+                    </div>
+                    <div>
+                        <label className={`settings-section__label ${isMobile ? 'settings-section__label--mobile' : ''}`}>{t.data}</label>
                         <p className={`settings-section__desc ${isMobile ? 'settings-section__desc--mobile' : ''}`}>
                             {t.purge_all_desc}
                         </p>

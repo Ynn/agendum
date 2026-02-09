@@ -5,6 +5,7 @@ import { namespacedStorageKey } from '../utils/storageNamespace';
 
 export type View = 'agenda' | 'courses' | 'stats' | 'settings' | 'search' | 'fix';
 export type ThemeMode = 'system' | 'light' | 'dark';
+export type CalendarWeekDays = 5 | 6 | 7;
 
 type UiState = {
   view: View;
@@ -16,6 +17,7 @@ type UiState = {
   lang: Lang;
   selectedTeacher: string;
   themeMode: ThemeMode;
+  calendarWeekDays: CalendarWeekDays;
 };
 
 type Action =
@@ -28,6 +30,7 @@ type Action =
   | { type: 'set_lang'; value: Lang }
   | { type: 'set_selected_teacher'; value: string }
   | { type: 'set_theme_mode'; value: ThemeMode }
+  | { type: 'set_calendar_week_days'; value: CalendarWeekDays }
   | { type: 'reset_after_purge' };
 
 type UiActions = {
@@ -40,6 +43,7 @@ type UiActions = {
   setLang: (value: Lang) => void;
   setSelectedTeacher: (value: string) => void;
   setThemeMode: (value: ThemeMode) => void;
+  setCalendarWeekDays: (value: CalendarWeekDays) => void;
   resetAfterPurge: () => void;
 };
 
@@ -52,6 +56,7 @@ const UiStateContext = createContext<UiStore | null>(null);
 const KEY_LANG = namespacedStorageKey('agendum_lang');
 const KEY_THEME_MODE = namespacedStorageKey('agendum_theme_mode');
 const KEY_TEACHER = namespacedStorageKey('agendum_teacher');
+const KEY_CALENDAR_WEEK_DAYS = namespacedStorageKey('agendum_calendar_week_days');
 
 function getInitialLang(): Lang {
   try {
@@ -81,6 +86,16 @@ function getInitialSelectedTeacher(): string {
   }
 }
 
+function getInitialCalendarWeekDays(): CalendarWeekDays {
+  try {
+    const saved = Number(localStorage.getItem(KEY_CALENDAR_WEEK_DAYS));
+    if (saved === 5 || saved === 6 || saved === 7) return saved;
+  } catch {
+    // ignore
+  }
+  return 7;
+}
+
 function createInitialState(): UiState {
   return {
     view: 'agenda',
@@ -92,6 +107,7 @@ function createInitialState(): UiState {
     lang: getInitialLang(),
     selectedTeacher: getInitialSelectedTeacher(),
     themeMode: getInitialThemeMode(),
+    calendarWeekDays: getInitialCalendarWeekDays(),
   };
 }
 
@@ -115,6 +131,8 @@ function reducer(state: UiState, action: Action): UiState {
       return { ...state, selectedTeacher: action.value };
     case 'set_theme_mode':
       return { ...state, themeMode: action.value };
+    case 'set_calendar_week_days':
+      return { ...state, calendarWeekDays: action.value };
     case 'reset_after_purge':
       return {
         ...state,
@@ -125,6 +143,7 @@ function reducer(state: UiState, action: Action): UiState {
         showFilters: false,
         mobileMenuOpen: false,
         selectedTeacher: '',
+        calendarWeekDays: 7,
       };
     default:
       return state;
@@ -144,6 +163,7 @@ export function UiStateProvider({ children }: { children: ReactNode }) {
     setLang: (value) => dispatch({ type: 'set_lang', value }),
     setSelectedTeacher: (value) => dispatch({ type: 'set_selected_teacher', value }),
     setThemeMode: (value) => dispatch({ type: 'set_theme_mode', value }),
+    setCalendarWeekDays: (value) => dispatch({ type: 'set_calendar_week_days', value }),
     resetAfterPurge: () => dispatch({ type: 'reset_after_purge' }),
   }), []);
 

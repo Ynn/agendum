@@ -34,9 +34,10 @@ interface Props {
   lang: 'fr' | 'en';
   dayLetters: string[];
   onEventClick: (sourceIndex: unknown) => void;
+  calendarWeekDays?: 5 | 6 | 7;
 }
 
-export function CourseCalendarDesktop({ events, lang, dayLetters, onEventClick }: Props) {
+export function CourseCalendarDesktop({ events, lang, dayLetters, onEventClick, calendarWeekDays = 7 }: Props) {
   const calendarRef = useRef<FullCalendar | null>(null);
   const titleRef = useRef<HTMLDivElement | null>(null);
   const measureCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -81,15 +82,15 @@ export function CourseCalendarDesktop({ events, lang, dayLetters, onEventClick }
     return `${month}/${day}/${year}`;
   };
 
-  const buildTitle = (viewType: string, start: Date, end: Date, fallback: string) => {
+  const buildTitle = (viewType: string, start: Date, _end: Date, fallback: string) => {
     if (viewType !== 'timeGridWeek' && viewType !== 'timeGridDay') return fallback;
     const [, week = ''] = toWeekInputValue(start).split('-W');
     if (!week) return fallback;
     const prefix = `${lang === 'fr' ? 'S' : 'W'}${week}`;
 
     if (viewType === 'timeGridWeek') {
-      const endInclusive = new Date(end);
-      endInclusive.setDate(endInclusive.getDate() - 1);
+      const endInclusive = new Date(start);
+      endInclusive.setDate(endInclusive.getDate() + (calendarWeekDays - 1));
       const startLabel = formatDayMonth(start);
       const endLabel = formatDayMonth(endInclusive);
       const year = endInclusive.getFullYear();
@@ -102,15 +103,15 @@ export function CourseCalendarDesktop({ events, lang, dayLetters, onEventClick }
     return `${prefix}: ${dayLabel}`;
   };
 
-  const buildCompactTitle = (viewType: string, start: Date, end: Date, fallback: string) => {
+  const buildCompactTitle = (viewType: string, start: Date, _end: Date, fallback: string) => {
     if (viewType !== 'timeGridWeek' && viewType !== 'timeGridDay') return fallback;
     const [, week = ''] = toWeekInputValue(start).split('-W');
     if (!week) return fallback;
     const prefix = `${lang === 'fr' ? 'S' : 'W'}${week}`;
 
     if (viewType === 'timeGridWeek') {
-      const endInclusive = new Date(end);
-      endInclusive.setDate(endInclusive.getDate() - 1);
+      const endInclusive = new Date(start);
+      endInclusive.setDate(endInclusive.getDate() + (calendarWeekDays - 1));
       const startLabel = formatShortDate(start);
       const endLabel = formatShortDate(endInclusive);
       if (lang === 'fr') return `${prefix} : ${startLabel} - ${endLabel}`;
@@ -209,6 +210,12 @@ export function CourseCalendarDesktop({ events, lang, dayLetters, onEventClick }
     };
   }, [events]);
 
+  const hiddenDays = useMemo(() => {
+    if (calendarWeekDays === 5) return [0, 6];
+    if (calendarWeekDays === 6) return [0];
+    return undefined;
+  }, [calendarWeekDays]);
+
   const goPrev = () => calendarRef.current?.getApi().prev();
   const goToday = () => calendarRef.current?.getApi().today();
   const goNext = () => calendarRef.current?.getApi().next();
@@ -251,6 +258,7 @@ export function CourseCalendarDesktop({ events, lang, dayLetters, onEventClick }
           events={events}
           locale={lang === 'fr' ? frLocale : undefined}
           firstDay={1}
+          hiddenDays={hiddenDays}
           dayHeaderContent={(arg) => {
             if (arg.view.type.includes('list')) return undefined;
             const letter = dayLetters[arg.date.getDay()] || '';

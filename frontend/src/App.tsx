@@ -21,6 +21,7 @@ type ResolvedTheme = 'light' | 'dark';
 const KEY_LANG = namespacedStorageKey('agendum_lang');
 const KEY_THEME_MODE = namespacedStorageKey('agendum_theme_mode');
 const KEY_TEACHER = namespacedStorageKey('agendum_teacher');
+const KEY_CALENDAR_WEEK_DAYS = namespacedStorageKey('agendum_calendar_week_days');
 
 const Agenda = lazy(async () => {
   const module = await import('./views/Agenda');
@@ -65,6 +66,7 @@ function AppContent() {
     lang,
     selectedTeacher,
     themeMode,
+    calendarWeekDays,
   } = ui;
   const deferredSearchQuery = useDeferredValue(searchQuery);
   const {
@@ -77,6 +79,7 @@ function AppContent() {
     setLang,
     setSelectedTeacher,
     setThemeMode,
+    setCalendarWeekDays,
     resetAfterPurge,
   } = uiActions;
 
@@ -189,6 +192,14 @@ function AppContent() {
       // ignore
     }
   }, [themeMode]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(KEY_CALENDAR_WEEK_DAYS, String(calendarWeekDays));
+    } catch {
+      // ignore
+    }
+  }, [calendarWeekDays]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -320,6 +331,7 @@ function AppContent() {
     await purgePersistedState();
     try {
       localStorage.removeItem(KEY_TEACHER);
+      localStorage.removeItem(KEY_CALENDAR_WEEK_DAYS);
     } catch {
       // ignore
     }
@@ -393,7 +405,7 @@ function AppContent() {
                       ⚠️ {t.no_main_schedule} {t.go_settings_prefix} <button onClick={() => setView('settings')} style={{ textDecoration: 'underline', fontWeight: 'bold', background: 'none', border: 'none', cursor: 'pointer', color: 'inherit' }}>{t.settings}</button> {t.go_settings_suffix}
                     </div>
                   )}
-                  <Agenda events={scheduleEvents} isMobile={isMobile} />
+                  <Agenda events={scheduleEvents} isMobile={isMobile} calendarWeekDays={calendarWeekDays} />
                 </div>
               )}
 
@@ -404,6 +416,7 @@ function AppContent() {
                   isTablet={isTablet && !isMobile}
                   selectedSubject={courseSubject}
                   onSubjectChange={setCourseSubject}
+                  calendarWeekDays={calendarWeekDays}
                 />
               )}
 
@@ -457,8 +470,10 @@ function AppContent() {
                   selectedTeacher={selectedTeacher}
                   isMobile={isMobile}
                   themeMode={themeMode}
+                  calendarWeekDays={calendarWeekDays}
                   onSelectTeacher={setSelectedTeacher}
                   onThemeModeChange={setThemeMode}
+                  onCalendarWeekDaysChange={setCalendarWeekDays}
                   onPurgeAll={handlePurgeAll}
                   onOpenFix={() => setView('fix')}
                   onImport={handleImport}
