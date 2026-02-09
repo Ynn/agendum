@@ -1,6 +1,7 @@
 import { createContext, useContext, useMemo, useReducer, type ReactNode } from 'react';
 import { initialFilters, type FilterState } from '../components/AdvancedFilters';
 import { detectLang, type Lang } from '../i18n';
+import { namespacedStorageKey } from '../utils/storageNamespace';
 
 export type View = 'agenda' | 'courses' | 'stats' | 'settings' | 'search' | 'fix';
 export type ThemeMode = 'system' | 'light' | 'dark';
@@ -48,10 +49,13 @@ type UiStore = {
 };
 
 const UiStateContext = createContext<UiStore | null>(null);
+const KEY_LANG = namespacedStorageKey('agendum_lang');
+const KEY_THEME_MODE = namespacedStorageKey('agendum_theme_mode');
+const KEY_TEACHER = namespacedStorageKey('agendum_teacher');
 
 function getInitialLang(): Lang {
   try {
-    const saved = localStorage.getItem('agendum_lang');
+    const saved = localStorage.getItem(KEY_LANG);
     if (saved === 'fr' || saved === 'en') return saved;
   } catch {
     // ignore
@@ -61,7 +65,7 @@ function getInitialLang(): Lang {
 
 function getInitialThemeMode(): ThemeMode {
   try {
-    const saved = localStorage.getItem('agendum_theme_mode');
+    const saved = localStorage.getItem(KEY_THEME_MODE);
     if (saved === 'system' || saved === 'light' || saved === 'dark') return saved;
   } catch {
     // ignore
@@ -71,7 +75,7 @@ function getInitialThemeMode(): ThemeMode {
 
 function getInitialSelectedTeacher(): string {
   try {
-    return localStorage.getItem('agendum_teacher') || '';
+    return localStorage.getItem(KEY_TEACHER) || '';
   } catch {
     return '';
   }

@@ -13,10 +13,14 @@ import { useRemoteCalendars } from './hooks/useRemoteCalendars';
 import { useDerivedEvents } from './hooks/useDerivedEvents';
 import { useIcsParserWorker } from './hooks/useIcsParserWorker';
 import { UiStateProvider, useUiState, type View } from './state/uiState';
+import { namespacedStorageKey } from './utils/storageNamespace';
 import './index.css';
 
 const CALENDAR_COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#6366f1'];
 type ResolvedTheme = 'light' | 'dark';
+const KEY_LANG = namespacedStorageKey('agendum_lang');
+const KEY_THEME_MODE = namespacedStorageKey('agendum_theme_mode');
+const KEY_TEACHER = namespacedStorageKey('agendum_teacher');
 
 const Agenda = lazy(async () => {
   const module = await import('./views/Agenda');
@@ -172,7 +176,7 @@ function AppContent() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('agendum_lang', lang);
+      localStorage.setItem(KEY_LANG, lang);
     } catch {
       // ignore
     }
@@ -180,7 +184,7 @@ function AppContent() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('agendum_theme_mode', themeMode);
+      localStorage.setItem(KEY_THEME_MODE, themeMode);
     } catch {
       // ignore
     }
@@ -221,7 +225,7 @@ function AppContent() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('agendum_teacher', selectedTeacher);
+      localStorage.setItem(KEY_TEACHER, selectedTeacher);
     } catch {
       // ignore
     }
@@ -315,7 +319,7 @@ function AppContent() {
     if (!window.confirm(t.purge_all_confirm)) return;
     await purgePersistedState();
     try {
-      localStorage.removeItem('agendum_teacher');
+      localStorage.removeItem(KEY_TEACHER);
     } catch {
       // ignore
     }

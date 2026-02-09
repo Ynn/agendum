@@ -1,11 +1,15 @@
 import { useCallback } from 'react';
 import { openDB } from 'idb';
 import type { Calendar, NormalizedEvent } from '../types';
+import { namespacedDbName, namespacedStorageKey } from '../utils/storageNamespace';
 
 // DB Config
-const DB_NAME = 'agendum-db';
+const DB_NAME = namespacedDbName('agendum-db');
 const STORE_NAME = 'events';
 const DB_VERSION = 2;
+const KEY_CALENDARS = namespacedStorageKey('agendum_state_calendars');
+const KEY_MAIN_ID = namespacedStorageKey('agendum_state_main_id');
+const KEY_NORM_RULES = namespacedStorageKey('agendum_state_norm_rules');
 
 export type NormalizationRules = {
   teachers: Record<string, string>;
@@ -119,9 +123,9 @@ export function useCalendarPersistence() {
     } catch (err) {
       console.warn('IndexedDB unavailable, using localStorage fallback', err);
       try {
-        const raw = localStorage.getItem('agendum_state_calendars');
-        const mainId = localStorage.getItem('agendum_state_main_id');
-        const rulesRaw = localStorage.getItem('agendum_state_norm_rules');
+        const raw = localStorage.getItem(KEY_CALENDARS);
+        const mainId = localStorage.getItem(KEY_MAIN_ID);
+        const rulesRaw = localStorage.getItem(KEY_NORM_RULES);
         const calendars = raw ? (JSON.parse(raw) as Calendar[]).map(withCalendarDefaults) : [];
         const normalizationRules = rulesRaw
           ? coerceNormalizationRules(JSON.parse(rulesRaw) as Partial<NormalizationRules>)
@@ -146,9 +150,9 @@ export function useCalendarPersistence() {
     } catch (err) {
       console.warn('IndexedDB save failed, using localStorage fallback', err);
       try {
-        localStorage.setItem('agendum_state_calendars', JSON.stringify(calendars));
+        localStorage.setItem(KEY_CALENDARS, JSON.stringify(calendars));
         if (mainCalendarId !== undefined) {
-          localStorage.setItem('agendum_state_main_id', mainCalendarId);
+          localStorage.setItem(KEY_MAIN_ID, mainCalendarId);
         }
       } catch (e2) {
         console.error('Fallback state save failed', e2);
@@ -163,7 +167,7 @@ export function useCalendarPersistence() {
     } catch (err) {
       console.warn('IndexedDB save rules failed, using localStorage fallback', err);
       try {
-        localStorage.setItem('agendum_state_norm_rules', JSON.stringify(rules));
+        localStorage.setItem(KEY_NORM_RULES, JSON.stringify(rules));
       } catch (e2) {
         console.error('Fallback rules save failed', e2);
       }
@@ -180,9 +184,9 @@ export function useCalendarPersistence() {
       // ignore
     }
     try {
-      localStorage.removeItem('agendum_state_calendars');
-      localStorage.removeItem('agendum_state_main_id');
-      localStorage.removeItem('agendum_state_norm_rules');
+      localStorage.removeItem(KEY_CALENDARS);
+      localStorage.removeItem(KEY_MAIN_ID);
+      localStorage.removeItem(KEY_NORM_RULES);
     } catch {
       // ignore
     }
